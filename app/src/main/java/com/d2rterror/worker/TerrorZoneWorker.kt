@@ -44,7 +44,7 @@ class TerrorZoneWorker(
             // If no zones selected, still reschedule but don't fetch API
             if (selectedZoneIds.isEmpty()) {
                 Log.d(TAG, "No zones selected, rescheduling")
-                workerScheduler.scheduleZoneCheck()
+                workerScheduler.scheduleZoneCheck(forceReplace = true)
                 return Result.success()
             }
 
@@ -87,7 +87,7 @@ class TerrorZoneWorker(
                     // Skip notification if in quiet hours
                     if (isInQuietHours) {
                         Log.d(TAG, "In quiet hours, skipping notification but rescheduling")
-                        workerScheduler.scheduleZoneCheck()
+                        workerScheduler.scheduleZoneCheck(forceReplace = true)
                         return@onSuccess
                     }
 
@@ -123,7 +123,7 @@ class TerrorZoneWorker(
             }
 
             // Schedule the next check
-            workerScheduler.scheduleZoneCheck()
+            workerScheduler.scheduleZoneCheck(forceReplace = true)
             Log.d(TAG, "=== TerrorZoneWorker completed, next check scheduled ===")
 
             Result.success()
@@ -132,7 +132,7 @@ class TerrorZoneWorker(
             // Only reschedule on failure if notifications are still enabled
             val stillEnabled = preferencesManager.notificationsEnabled.first()
             if (stillEnabled) {
-                workerScheduler.scheduleZoneCheck()
+                workerScheduler.scheduleZoneCheck(forceReplace = true)
             }
             Result.retry()
         }

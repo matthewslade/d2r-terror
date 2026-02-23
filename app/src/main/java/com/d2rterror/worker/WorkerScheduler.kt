@@ -27,14 +27,11 @@ class WorkerScheduler(
      * For example, if user wants 5 minutes advance notice:
      * - Zone changes at :30 → check at :25
      * - Zone changes at :00 → check at :55 (of previous hour)
+     *
+     * @param forceReplace If true, replaces any existing work (use when settings change).
+     *                     If false, uses KEEP policy to not disrupt existing/running work.
      */
     fun scheduleZoneCheck(forceReplace: Boolean = false) {
-        // Check if work is already running - don't cancel it
-        if (!forceReplace && isWorkRunning()) {
-            Log.d(TAG, "Worker is already running, not replacing")
-            return
-        }
-
         val advanceMinutes = runBlocking {
             preferencesManager.advanceNotificationMinutes.first()
         }
@@ -46,7 +43,8 @@ class WorkerScheduler(
         // Ensure minimum delay of 1 minute
         val actualDelay = maxOf(delayMillis, 60_000L)
 
-        Log.d(TAG, "Scheduling zone check in ${actualDelay/1000}s (at $nextCheckTime)")
+        val policy = if (forceReplace) ExistingWorkPolicy.REPLACE else ExistingWorkPolicy.KEEP
+        Log.d(TAG, "Scheduling zone check in ${actualDelay/1000}s (at $nextCheckTime) with policy=$policy")
 
         val workRequest = OneTimeWorkRequestBuilder<TerrorZoneWorker>()
             .setInitialDelay(actualDelay, TimeUnit.MILLISECONDS)
@@ -60,21 +58,9 @@ class WorkerScheduler(
 
         workManager.enqueueUniqueWork(
             TerrorZoneWorker.WORK_NAME,
-            ExistingWorkPolicy.REPLACE,
+            policy,
             workRequest
         )
-    }
-
-    /**
-     * Check if work is currently running (not just enqueued)
-     */
-    private fun isWorkRunning(): Boolean {
-        return try {
-            val infos = workManager.getWorkInfosForUniqueWork(TerrorZoneWorker.WORK_NAME).get()
-            infos.any { it.state == WorkInfo.State.RUNNING }
-        } catch (e: Exception) {
-            false
-        }
     }
 
     /**
