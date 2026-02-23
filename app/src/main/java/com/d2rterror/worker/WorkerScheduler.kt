@@ -1,6 +1,7 @@
 package com.d2rterror.worker
 
 import android.content.Context
+import android.util.Log
 import androidx.work.*
 import com.d2rterror.data.local.PreferencesManager
 import kotlinx.coroutines.flow.first
@@ -16,6 +17,10 @@ class WorkerScheduler(
 
     private val workManager = WorkManager.getInstance(context)
 
+    companion object {
+        private const val TAG = "WorkerScheduler"
+    }
+
     /**
      * Schedule the next terror zone check based on user's advance notification preference.
      *
@@ -23,7 +28,13 @@ class WorkerScheduler(
      * - Zone changes at :30 → check at :25
      * - Zone changes at :00 → check at :55 (of previous hour)
      */
-    fun scheduleZoneCheck() {
+    fun scheduleZoneCheck(forceReplace: Boolean = false) {
+        // Check if work is already running - don't cancel it
+        if (!forceReplace && isWorkRunning()) {
+            Log.d(TAG, "Worker is already running, not replacing")
+            return
+        }
+
         val advanceMinutes = runBlocking {
             preferencesManager.advanceNotificationMinutes.first()
         }
@@ -34,6 +45,8 @@ class WorkerScheduler(
 
         // Ensure minimum delay of 1 minute
         val actualDelay = maxOf(delayMillis, 60_000L)
+
+        Log.d(TAG, "Scheduling zone check in ${actualDelay/1000}s (at $nextCheckTime)")
 
         val workRequest = OneTimeWorkRequestBuilder<TerrorZoneWorker>()
             .setInitialDelay(actualDelay, TimeUnit.MILLISECONDS)
@@ -50,6 +63,18 @@ class WorkerScheduler(
             ExistingWorkPolicy.REPLACE,
             workRequest
         )
+    }
+
+    /**
+     * Check if work is currently running (not just enqueued)
+     */
+    private fun isWorkRunning(): Boolean {
+        return try {
+            val infos = workManager.getWorkInfosForUniqueWork(TerrorZoneWorker.WORK_NAME).get()
+            infos.any { it.state == WorkInfo.State.RUNNING }
+        } catch (e: Exception) {
+            false
+        }
     }
 
     /**

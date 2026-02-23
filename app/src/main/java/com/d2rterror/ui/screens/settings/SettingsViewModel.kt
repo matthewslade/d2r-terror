@@ -55,7 +55,7 @@ class SettingsViewModel(
         viewModelScope.launch {
             preferencesManager.setNotificationsEnabled(enabled)
             if (enabled) {
-                workerScheduler.scheduleZoneCheck()
+                workerScheduler.scheduleZoneCheck(forceReplace = true)
             } else {
                 workerScheduler.cancelZoneCheck()
             }
@@ -67,7 +67,7 @@ class SettingsViewModel(
             preferencesManager.setAdvanceNotificationMinutes(minutes)
             // Reschedule worker with new timing
             if (uiState.value.notificationsEnabled) {
-                workerScheduler.scheduleZoneCheck()
+                workerScheduler.scheduleZoneCheck(forceReplace = true)
             }
         }
     }
