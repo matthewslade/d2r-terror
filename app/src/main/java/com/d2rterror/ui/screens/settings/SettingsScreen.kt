@@ -209,14 +209,15 @@ fun SettingsScreen(
                         )
                     }
 
-                    // Local state for slider to avoid rescheduling on every tick
-                    // Key on uiState value so it resets when loaded from storage
-                    var sliderValue by remember(uiState.advanceNotificationMinutes) {
-                        mutableFloatStateOf(uiState.advanceNotificationMinutes.toFloat())
-                    }
+                    // Local state for slider - only used during active dragging
+                    var isSliding by remember { mutableStateOf(false) }
+                    var localSliderValue by remember { mutableFloatStateOf(uiState.advanceNotificationMinutes.toFloat()) }
+
+                    // Display value: use local when sliding, uiState otherwise
+                    val displayValue = if (isSliding) localSliderValue else uiState.advanceNotificationMinutes.toFloat()
 
                     Text(
-                        text = "Get notified ${sliderValue.roundToInt()} minutes before zone becomes active",
+                        text = "Get notified ${displayValue.roundToInt()} minutes before zone becomes active",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -224,14 +225,15 @@ fun SettingsScreen(
                     // Slider for advance notification time
                     Column {
                         Slider(
-                            value = sliderValue,
+                            value = displayValue,
                             onValueChange = { value ->
-                                // Update local state for visual feedback
-                                sliderValue = value
+                                isSliding = true
+                                localSliderValue = value
                             },
                             onValueChangeFinished = {
-                                // Only save and reschedule when user finishes sliding
-                                viewModel.setAdvanceNotificationMinutes(sliderValue.roundToInt())
+                                // Save and reschedule when user finishes sliding
+                                viewModel.setAdvanceNotificationMinutes(localSliderValue.roundToInt())
+                                isSliding = false
                             },
                             valueRange = PreferencesManager.MIN_ADVANCE_MINUTES.toFloat()..PreferencesManager.MAX_ADVANCE_MINUTES.toFloat(),
                             steps = PreferencesManager.MAX_ADVANCE_MINUTES - PreferencesManager.MIN_ADVANCE_MINUTES - 1,
@@ -251,7 +253,7 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "${sliderValue.roundToInt()} min",
+                                text = "${displayValue.roundToInt()} min",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
