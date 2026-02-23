@@ -210,11 +210,9 @@ fun SettingsScreen(
                     }
 
                     // Local state for slider to avoid rescheduling on every tick
-                    var sliderValue by remember { mutableFloatStateOf(uiState.advanceNotificationMinutes.toFloat()) }
-
-                    // Sync local state when uiState changes (e.g., on initial load)
-                    LaunchedEffect(uiState.advanceNotificationMinutes) {
-                        sliderValue = uiState.advanceNotificationMinutes.toFloat()
+                    // Key on uiState value so it resets when loaded from storage
+                    var sliderValue by remember(uiState.advanceNotificationMinutes) {
+                        mutableFloatStateOf(uiState.advanceNotificationMinutes.toFloat())
                     }
 
                     Text(
