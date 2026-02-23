@@ -1,0 +1,14 @@
+<?xml version="1.0" encoding="utf-8"?>
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <!-- Flame/Terror icon -->
+    <path
+        android:fillColor="#FFDC143C"
+        android:pathData="M12,2C12,2 7,7 7,12C7,14.76 9.24,17 12,17C14.76,17 17,14.76 17,12C17,7 12,2 12,2ZM12,15C10.34,15 9,13.66 9,12C9,9.5 12,5 12,5C12,5 15,9.5 15,12C15,13.66 13.66,15 12,15Z" />
+    <path
+        android:fillColor="#FFD4AF37"
+        android:pathData="M12,22C8.69,22 6,19.31 6,16C6,13.5 8,10 12,6C16,10 18,13.5 18,16C18,19.31 15.31,22 12,22ZM12,8.5C9.5,11.5 8,14 8,16C8,18.21 9.79,20 12,20C14.21,20 16,18.21 16,16C16,14 14.5,11.5 12,8.5Z" />
+</vector>

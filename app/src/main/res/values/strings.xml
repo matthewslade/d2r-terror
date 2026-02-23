@@ -1,0 +1,26 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">D2R Terror Zones</string>
+    <string name="current_zone">Current Terror Zone</string>
+    <string name="next_zone">Next Terror Zone</string>
+    <string name="zone_selection">Zone Selection</string>
+    <string name="settings">Settings</string>
+    <string name="notifications_enabled">Notifications Enabled</string>
+    <string name="advance_notification">Advance Notification Time</string>
+    <string name="minutes">minutes</string>
+    <string name="select_all">Select All</string>
+    <string name="clear_all">Clear All</string>
+    <string name="act_1">Act I</string>
+    <string name="act_2">Act II</string>
+    <string name="act_3">Act III</string>
+    <string name="act_4">Act IV</string>
+    <string name="act_5">Act V</string>
+    <string name="loading">Loading...</string>
+    <string name="error_loading">Error loading zones</string>
+    <string name="retry">Retry</string>
+    <string name="notification_channel_name">Terror Zone Alerts</string>
+    <string name="notification_channel_description">Notifications for upcoming Terror Zones</string>
+    <string name="notification_title">Terror Zone Alert</string>
+    <string name="time_until_active">Active in %1$d minutes</string>
+    <string name="zones_selected">%1$d zones selected</string>
+</resources>
