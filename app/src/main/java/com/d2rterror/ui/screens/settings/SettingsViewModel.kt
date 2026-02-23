@@ -89,4 +89,32 @@ class SettingsViewModel(
             preferencesManager.setQuietHoursEnd(minutesFromMidnight)
         }
     }
+
+    /**
+     * Save all settings at once and reschedule worker if needed.
+     * Called when user presses the save button.
+     */
+    fun saveAllSettings(
+        notificationsEnabled: Boolean,
+        advanceMinutes: Int,
+        quietHoursEnabled: Boolean,
+        quietHoursStart: Int,
+        quietHoursEnd: Int
+    ) {
+        viewModelScope.launch {
+            // Save all preferences
+            preferencesManager.setNotificationsEnabled(notificationsEnabled)
+            preferencesManager.setAdvanceNotificationMinutes(advanceMinutes)
+            preferencesManager.setQuietHoursEnabled(quietHoursEnabled)
+            preferencesManager.setQuietHoursStart(quietHoursStart)
+            preferencesManager.setQuietHoursEnd(quietHoursEnd)
+
+            // Handle worker scheduling
+            if (notificationsEnabled) {
+                workerScheduler.scheduleZoneCheck(forceReplace = true)
+            } else {
+                workerScheduler.cancelZoneCheck()
+            }
+        }
+    }
 }

@@ -11,6 +11,7 @@ import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
 import androidx.compose.material.icons.filled.Bedtime
+import androidx.compose.material.icons.filled.Check
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
@@ -34,6 +35,31 @@ fun SettingsScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
+
+    // Local state for editing - initialized from uiState
+    var localNotificationsEnabled by remember { mutableStateOf(uiState.notificationsEnabled) }
+    var localAdvanceMinutes by remember { mutableIntStateOf(uiState.advanceNotificationMinutes) }
+    var localQuietHoursEnabled by remember { mutableStateOf(uiState.quietHoursEnabled) }
+    var localQuietHoursStart by remember { mutableIntStateOf(uiState.quietHoursStart) }
+    var localQuietHoursEnd by remember { mutableIntStateOf(uiState.quietHoursEnd) }
+
+    // Sync local state when uiState loads from storage (only on initial load)
+    LaunchedEffect(Unit) {
+        viewModel.uiState.collect { state ->
+            localNotificationsEnabled = state.notificationsEnabled
+            localAdvanceMinutes = state.advanceNotificationMinutes
+            localQuietHoursEnabled = state.quietHoursEnabled
+            localQuietHoursStart = state.quietHoursStart
+            localQuietHoursEnd = state.quietHoursEnd
+        }
+    }
+
+    // Check if there are unsaved changes
+    val hasChanges = localNotificationsEnabled != uiState.notificationsEnabled ||
+            localAdvanceMinutes != uiState.advanceNotificationMinutes ||
+            localQuietHoursEnabled != uiState.quietHoursEnabled ||
+            localQuietHoursStart != uiState.quietHoursStart ||
+            localQuietHoursEnd != uiState.quietHoursEnd
 
     var hasNotificationPermission by remember {
         mutableStateOf(
@@ -71,6 +97,27 @@ fun SettingsScreen(
                         Icon(
                             imageVector = Icons.AutoMirrored.Filled.ArrowBack,
                             contentDescription = "Back"
+                        )
+                    }
+                },
+                actions = {
+                    // Save button - only enabled when there are changes
+                    IconButton(
+                        onClick = {
+                            viewModel.saveAllSettings(
+                                notificationsEnabled = localNotificationsEnabled,
+                                advanceMinutes = localAdvanceMinutes,
+                                quietHoursEnabled = localQuietHoursEnabled,
+                                quietHoursStart = localQuietHoursStart,
+                                quietHoursEnd = localQuietHoursEnd
+                            )
+                        },
+                        enabled = hasChanges
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Check,
+                            contentDescription = "Save",
+                            tint = if (hasChanges) D2RGold else MaterialTheme.colorScheme.onSurfaceVariant
                         )
                     }
                 },
@@ -130,7 +177,7 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                text = if (uiState.notificationsEnabled)
+                                text = if (localNotificationsEnabled)
                                     "App checks zones in background and notifies you"
                                 else
                                     "No background activity when disabled",
@@ -140,14 +187,14 @@ fun SettingsScreen(
                         }
 
                         Switch(
-                            checked = uiState.notificationsEnabled && hasNotificationPermission,
+                            checked = localNotificationsEnabled && hasNotificationPermission,
                             onCheckedChange = { enabled ->
                                 if (enabled && !hasNotificationPermission) {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                 } else {
-                                    viewModel.setNotificationsEnabled(enabled)
+                                    localNotificationsEnabled = enabled
                                 }
                             }
                         )
@@ -209,15 +256,8 @@ fun SettingsScreen(
                         )
                     }
 
-                    // Local state for slider - only used during active dragging
-                    var isSliding by remember { mutableStateOf(false) }
-                    var localSliderValue by remember { mutableFloatStateOf(uiState.advanceNotificationMinutes.toFloat()) }
-
-                    // Display value: use local when sliding, uiState otherwise
-                    val displayValue = if (isSliding) localSliderValue else uiState.advanceNotificationMinutes.toFloat()
-
                     Text(
-                        text = "Get notified ${displayValue.roundToInt()} minutes before zone becomes active",
+                        text = "Get notified $localAdvanceMinutes minutes before zone becomes active",
                         style = MaterialTheme.typography.bodyMedium,
                         color = MaterialTheme.colorScheme.onSurfaceVariant
                     )
@@ -225,15 +265,9 @@ fun SettingsScreen(
                     // Slider for advance notification time
                     Column {
                         Slider(
-                            value = displayValue,
+                            value = localAdvanceMinutes.toFloat(),
                             onValueChange = { value ->
-                                isSliding = true
-                                localSliderValue = value
-                            },
-                            onValueChangeFinished = {
-                                // Save and reschedule when user finishes sliding
-                                viewModel.setAdvanceNotificationMinutes(localSliderValue.roundToInt())
-                                isSliding = false
+                                localAdvanceMinutes = value.roundToInt()
                             },
                             valueRange = PreferencesManager.MIN_ADVANCE_MINUTES.toFloat()..PreferencesManager.MAX_ADVANCE_MINUTES.toFloat(),
                             steps = PreferencesManager.MAX_ADVANCE_MINUTES - PreferencesManager.MIN_ADVANCE_MINUTES - 1,
@@ -253,7 +287,7 @@ fun SettingsScreen(
                                 color = MaterialTheme.colorScheme.onSurfaceVariant
                             )
                             Text(
-                                text = "${displayValue.roundToInt()} min",
+                                text = "$localAdvanceMinutes min",
                                 style = MaterialTheme.typography.labelLarge,
                                 color = MaterialTheme.colorScheme.primary,
                                 fontWeight = FontWeight.Bold
@@ -315,15 +349,15 @@ fun SettingsScreen(
                         }
 
                         Switch(
-                            checked = uiState.quietHoursEnabled,
+                            checked = localQuietHoursEnabled,
                             onCheckedChange = { enabled ->
-                                viewModel.setQuietHoursEnabled(enabled)
+                                localQuietHoursEnabled = enabled
                             }
                         )
                     }
 
                     // Time pickers (only shown when quiet hours enabled)
-                    if (uiState.quietHoursEnabled) {
+                    if (localQuietHoursEnabled) {
                         HorizontalDivider()
 
                         // Start Time
@@ -339,7 +373,7 @@ fun SettingsScreen(
                             )
                             TextButton(onClick = { showStartTimePicker = true }) {
                                 Text(
-                                    text = formatMinutesToTime(uiState.quietHoursStart),
+                                    text = formatMinutesToTime(localQuietHoursStart),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -348,10 +382,10 @@ fun SettingsScreen(
 
                         if (showStartTimePicker) {
                             TimePickerDialog(
-                                initialHour = uiState.quietHoursStart / 60,
-                                initialMinute = uiState.quietHoursStart % 60,
+                                initialHour = localQuietHoursStart / 60,
+                                initialMinute = localQuietHoursStart % 60,
                                 onTimeSelected = { hour, minute ->
-                                    viewModel.setQuietHoursStart(hour * 60 + minute)
+                                    localQuietHoursStart = hour * 60 + minute
                                     showStartTimePicker = false
                                 },
                                 onDismiss = { showStartTimePicker = false }
@@ -371,7 +405,7 @@ fun SettingsScreen(
                             )
                             TextButton(onClick = { showEndTimePicker = true }) {
                                 Text(
-                                    text = formatMinutesToTime(uiState.quietHoursEnd),
+                                    text = formatMinutesToTime(localQuietHoursEnd),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -380,10 +414,10 @@ fun SettingsScreen(
 
                         if (showEndTimePicker) {
                             TimePickerDialog(
-                                initialHour = uiState.quietHoursEnd / 60,
-                                initialMinute = uiState.quietHoursEnd % 60,
+                                initialHour = localQuietHoursEnd / 60,
+                                initialMinute = localQuietHoursEnd % 60,
                                 onTimeSelected = { hour, minute ->
-                                    viewModel.setQuietHoursEnd(hour * 60 + minute)
+                                    localQuietHoursEnd = hour * 60 + minute
                                     showEndTimePicker = false
                                 },
                                 onDismiss = { showEndTimePicker = false }
@@ -392,7 +426,7 @@ fun SettingsScreen(
 
                         // Summary
                         Text(
-                            text = "Notifications silenced from ${formatMinutesToTime(uiState.quietHoursStart)} to ${formatMinutesToTime(uiState.quietHoursEnd)}",
+                            text = "Notifications silenced from ${formatMinutesToTime(localQuietHoursStart)} to ${formatMinutesToTime(localQuietHoursEnd)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
