@@ -111,6 +111,7 @@ fun SettingsScreen(
                                 quietHoursStart = localQuietHoursStart,
                                 quietHoursEnd = localQuietHoursEnd
                             )
+                            onNavigateBack()
                         },
                         enabled = hasChanges
                     ) {
