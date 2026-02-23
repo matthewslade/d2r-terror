@@ -108,17 +108,20 @@ object ZoneData {
      */
     fun findZoneByScrapedName(scrapedName: String): Int? {
         val normalizedName = scrapedName.lowercase().trim()
+        android.util.Log.d("ZoneData", "Finding zone for scraped name: '$scrapedName' -> normalized: '$normalizedName'")
 
         // Check each zone's keywords
         for (zone in terrorZoneGroups) {
             for (keyword in zone.keywords) {
                 // Check if the keyword matches the scraped name
                 if (normalizedName == keyword || normalizedName.contains(keyword) || keyword.contains(normalizedName)) {
+                    android.util.Log.d("ZoneData", "MATCHED: '$normalizedName' -> Zone ${zone.id} '${zone.name}' via keyword '$keyword'")
                     return zone.id
                 }
             }
         }
 
+        android.util.Log.w("ZoneData", "NO MATCH for: '$normalizedName'")
         return null
     }
 
