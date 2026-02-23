@@ -10,7 +10,10 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val notificationsEnabled: Boolean = true,
     val advanceNotificationMinutes: Int = PreferencesManager.DEFAULT_ADVANCE_MINUTES,
-    val selectedZonesCount: Int = 0
+    val selectedZonesCount: Int = 0,
+    val quietHoursEnabled: Boolean = false,
+    val quietHoursStart: Int = PreferencesManager.DEFAULT_QUIET_START,
+    val quietHoursEnd: Int = PreferencesManager.DEFAULT_QUIET_END
 )
 
 class SettingsViewModel(
@@ -21,12 +24,26 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = combine(
         preferencesManager.notificationsEnabled,
         preferencesManager.advanceNotificationMinutes,
-        preferencesManager.selectedZones
-    ) { notificationsEnabled, advanceMinutes, selectedZones ->
+        preferencesManager.selectedZones,
+        preferencesManager.quietHoursEnabled,
+        preferencesManager.quietHoursStart,
+        preferencesManager.quietHoursEnd
+    ) { values ->
+        @Suppress("UNCHECKED_CAST")
+        val notificationsEnabled = values[0] as Boolean
+        val advanceMinutes = values[1] as Int
+        val selectedZones = values[2] as Set<Int>
+        val quietHoursEnabled = values[3] as Boolean
+        val quietHoursStart = values[4] as Int
+        val quietHoursEnd = values[5] as Int
+
         SettingsUiState(
             notificationsEnabled = notificationsEnabled,
             advanceNotificationMinutes = advanceMinutes,
-            selectedZonesCount = selectedZones.size
+            selectedZonesCount = selectedZones.size,
+            quietHoursEnabled = quietHoursEnabled,
+            quietHoursStart = quietHoursStart,
+            quietHoursEnd = quietHoursEnd
         )
     }.stateIn(
         scope = viewModelScope,
@@ -52,6 +69,24 @@ class SettingsViewModel(
             if (uiState.value.notificationsEnabled) {
                 workerScheduler.scheduleZoneCheck()
             }
+        }
+    }
+
+    fun setQuietHoursEnabled(enabled: Boolean) {
+        viewModelScope.launch {
+            preferencesManager.setQuietHoursEnabled(enabled)
+        }
+    }
+
+    fun setQuietHoursStart(minutesFromMidnight: Int) {
+        viewModelScope.launch {
+            preferencesManager.setQuietHoursStart(minutesFromMidnight)
+        }
+    }
+
+    fun setQuietHoursEnd(minutesFromMidnight: Int) {
+        viewModelScope.launch {
+            preferencesManager.setQuietHoursEnd(minutesFromMidnight)
         }
     }
 }

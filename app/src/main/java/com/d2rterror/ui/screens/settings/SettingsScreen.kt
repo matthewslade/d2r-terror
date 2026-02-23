@@ -10,6 +10,7 @@ import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Bedtime
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
 import androidx.compose.material3.*
@@ -254,6 +255,138 @@ fun SettingsScreen(
                 }
             }
 
+            // Quiet Hours Section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surface
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = Icons.Default.Bedtime,
+                            contentDescription = null,
+                            tint = MaterialTheme.colorScheme.primary
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Quiet Hours",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = MaterialTheme.colorScheme.primary
+                        )
+                    }
+
+                    // Enable/Disable Quiet Hours
+                    Row(
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween,
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Column(modifier = Modifier.weight(1f)) {
+                            Text(
+                                text = "Enable Quiet Hours",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            Text(
+                                text = "No notifications during sleep time",
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                        }
+
+                        Switch(
+                            checked = uiState.quietHoursEnabled,
+                            onCheckedChange = { enabled ->
+                                viewModel.setQuietHoursEnabled(enabled)
+                            }
+                        )
+                    }
+
+                    // Time pickers (only shown when quiet hours enabled)
+                    if (uiState.quietHoursEnabled) {
+                        HorizontalDivider()
+
+                        // Start Time
+                        var showStartTimePicker by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "Start Time",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            TextButton(onClick = { showStartTimePicker = true }) {
+                                Text(
+                                    text = formatMinutesToTime(uiState.quietHoursStart),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        if (showStartTimePicker) {
+                            TimePickerDialog(
+                                initialHour = uiState.quietHoursStart / 60,
+                                initialMinute = uiState.quietHoursStart % 60,
+                                onTimeSelected = { hour, minute ->
+                                    viewModel.setQuietHoursStart(hour * 60 + minute)
+                                    showStartTimePicker = false
+                                },
+                                onDismiss = { showStartTimePicker = false }
+                            )
+                        }
+
+                        // End Time
+                        var showEndTimePicker by remember { mutableStateOf(false) }
+                        Row(
+                            modifier = Modifier.fillMaxWidth(),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "End Time",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            TextButton(onClick = { showEndTimePicker = true }) {
+                                Text(
+                                    text = formatMinutesToTime(uiState.quietHoursEnd),
+                                    style = MaterialTheme.typography.bodyLarge,
+                                    fontWeight = FontWeight.Bold
+                                )
+                            }
+                        }
+
+                        if (showEndTimePicker) {
+                            TimePickerDialog(
+                                initialHour = uiState.quietHoursEnd / 60,
+                                initialMinute = uiState.quietHoursEnd % 60,
+                                onTimeSelected = { hour, minute ->
+                                    viewModel.setQuietHoursEnd(hour * 60 + minute)
+                                    showEndTimePicker = false
+                                },
+                                onDismiss = { showEndTimePicker = false }
+                            )
+                        }
+
+                        // Summary
+                        Text(
+                            text = "Notifications silenced from ${formatMinutesToTime(uiState.quietHoursStart)} to ${formatMinutesToTime(uiState.quietHoursEnd)}",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                }
+            }
+
             // Info Card
             Card(
                 modifier = Modifier.fillMaxWidth(),
@@ -286,4 +419,58 @@ fun SettingsScreen(
             }
         }
     }
+}
+
+/**
+ * Format minutes from midnight to a readable time string (e.g., "10:00 PM")
+ */
+private fun formatMinutesToTime(minutes: Int): String {
+    val hour = minutes / 60
+    val minute = minutes % 60
+    val isPM = hour >= 12
+    val displayHour = when {
+        hour == 0 -> 12
+        hour > 12 -> hour - 12
+        else -> hour
+    }
+    return "%d:%02d %s".format(displayHour, minute, if (isPM) "PM" else "AM")
+}
+
+/**
+ * Time Picker Dialog
+ */
+@OptIn(ExperimentalMaterial3Api::class)
+@Composable
+private fun TimePickerDialog(
+    initialHour: Int,
+    initialMinute: Int,
+    onTimeSelected: (hour: Int, minute: Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    val timePickerState = rememberTimePickerState(
+        initialHour = initialHour,
+        initialMinute = initialMinute,
+        is24Hour = false
+    )
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = {
+                    onTimeSelected(timePickerState.hour, timePickerState.minute)
+                }
+            ) {
+                Text("OK")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        text = {
+            TimePicker(state = timePickerState)
+        }
+    )
 }

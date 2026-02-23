@@ -10,6 +10,7 @@ import com.d2rterror.ui.components.getMinutesUntilNextChange
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
+import java.util.Calendar
 
 class TerrorZoneWorker(
     context: Context,
@@ -51,6 +52,25 @@ class TerrorZoneWorker(
                 }
 
                 if (matchingZones.isNotEmpty()) {
+                    // Check quiet hours before notifying
+                    val quietHoursEnabled = preferencesManager.quietHoursEnabled.first()
+                    val isInQuietHours = if (quietHoursEnabled) {
+                        val quietStart = preferencesManager.quietHoursStart.first()
+                        val quietEnd = preferencesManager.quietHoursEnd.first()
+                        val calendar = Calendar.getInstance()
+                        val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+                        preferencesManager.isInQuietHours(currentMinutes, quietStart, quietEnd)
+                    } else {
+                        false
+                    }
+
+                    // Skip notification if in quiet hours
+                    if (isInQuietHours) {
+                        // Still reschedule but don't notify
+                        workerScheduler.scheduleZoneCheck()
+                        return@onSuccess
+                    }
+
                     // Create a unique key for this zone set to prevent duplicate notifications
                     val allMatchedIds = matchingZones.flatMap { it.matchedIds }.sorted()
                     val zoneKey = allMatchedIds.joinToString(",")
