@@ -93,6 +93,7 @@ class SettingsViewModel(
     /**
      * Save all settings at once and reschedule worker if needed.
      * Called when user presses the save button.
+     * Also clears last notification tracking to allow re-testing.
      */
     fun saveAllSettings(
         notificationsEnabled: Boolean,
@@ -108,6 +109,9 @@ class SettingsViewModel(
             preferencesManager.setQuietHoursEnabled(quietHoursEnabled)
             preferencesManager.setQuietHoursStart(quietHoursStart)
             preferencesManager.setQuietHoursEnd(quietHoursEnd)
+
+            // Clear last notification to allow re-testing
+            preferencesManager.clearLastNotification()
 
             // Handle worker scheduling
             if (notificationsEnabled) {

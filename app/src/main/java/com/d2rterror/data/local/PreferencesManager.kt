@@ -110,6 +110,16 @@ class PreferencesManager(private val context: Context) {
         }
     }
 
+    /**
+     * Clear the last notification tracking to allow re-testing notifications.
+     */
+    suspend fun clearLastNotification() {
+        context.dataStore.edit { preferences ->
+            preferences.remove(LAST_NOTIFIED_ZONE)
+            preferences[LAST_NOTIFICATION_TIME] = 0L
+        }
+    }
+
     // Quiet hours enabled
     val quietHoursEnabled: Flow<Boolean> = context.dataStore.data
         .map { preferences ->

@@ -1,10 +1,16 @@
 package com.d2rterror.ui.screens.settings
 
 import android.Manifest
+import android.content.Intent
 import android.content.pm.PackageManager
 import android.os.Build
 import androidx.activity.compose.rememberLauncherForActivityResult
 import androidx.activity.result.contract.ActivityResultContracts
+import androidx.compose.material.icons.filled.BatteryAlert
+import androidx.compose.material.icons.filled.CheckCircle
+import androidx.lifecycle.Lifecycle
+import androidx.lifecycle.compose.LifecycleEventEffect
+import com.d2rterror.util.BatteryOptimizationHelper
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -81,6 +87,24 @@ fun SettingsScreen(
         if (isGranted) {
             viewModel.setNotificationsEnabled(true)
         }
+    }
+
+    // Battery optimization state
+    var isIgnoringBatteryOptimizations by remember {
+        mutableStateOf(BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context))
+    }
+
+    // Re-check battery optimization when screen resumes (user might have changed it in settings)
+    LifecycleEventEffect(Lifecycle.Event.ON_RESUME) {
+        isIgnoringBatteryOptimizations = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
+    }
+
+    // Launcher for battery optimization settings
+    val batterySettingsLauncher = rememberLauncherForActivityResult(
+        contract = ActivityResultContracts.StartActivityForResult()
+    ) {
+        // Re-check after returning from settings
+        isIgnoringBatteryOptimizations = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
     }
 
     Scaffold(
@@ -431,6 +455,101 @@ fun SettingsScreen(
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
+                    }
+                }
+            }
+
+            // Battery Optimization Section
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = if (isIgnoringBatteryOptimizations)
+                        MaterialTheme.colorScheme.surface
+                    else
+                        MaterialTheme.colorScheme.errorContainer.copy(alpha = 0.3f)
+                )
+            ) {
+                Column(
+                    modifier = Modifier.padding(16.dp),
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
+                ) {
+                    Row(
+                        verticalAlignment = Alignment.CenterVertically
+                    ) {
+                        Icon(
+                            imageVector = if (isIgnoringBatteryOptimizations)
+                                Icons.Default.CheckCircle
+                            else
+                                Icons.Default.BatteryAlert,
+                            contentDescription = null,
+                            tint = if (isIgnoringBatteryOptimizations)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.error
+                        )
+                        Spacer(modifier = Modifier.width(8.dp))
+                        Text(
+                            text = "Background Activity",
+                            style = MaterialTheme.typography.titleMedium,
+                            fontWeight = FontWeight.Bold,
+                            color = if (isIgnoringBatteryOptimizations)
+                                MaterialTheme.colorScheme.primary
+                            else
+                                MaterialTheme.colorScheme.error
+                        )
+                    }
+
+                    if (isIgnoringBatteryOptimizations) {
+                        Text(
+                            text = "Battery optimization is disabled. Background notifications should work reliably.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+                    } else {
+                        Text(
+                            text = "Battery optimization may prevent background notifications. " +
+                                    "Disable it for reliable alerts.",
+                            style = MaterialTheme.typography.bodyMedium,
+                            color = MaterialTheme.colorScheme.onSurface
+                        )
+
+                        Button(
+                            onClick = {
+                                val intent = BatteryOptimizationHelper
+                                    .getRequestIgnoreBatteryOptimizationsIntent(context)
+                                batterySettingsLauncher.launch(intent)
+                            },
+                            modifier = Modifier.fillMaxWidth(),
+                            colors = ButtonDefaults.buttonColors(
+                                containerColor = MaterialTheme.colorScheme.primary
+                            )
+                        ) {
+                            Text("Disable Battery Optimization")
+                        }
+
+                        // Show manufacturer-specific instructions if available
+                        BatteryOptimizationHelper.getManufacturerInstructions()?.let { instructions ->
+                            HorizontalDivider()
+                            Text(
+                                text = "Additional steps for your device:",
+                                style = MaterialTheme.typography.labelMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            Text(
+                                text = instructions,
+                                style = MaterialTheme.typography.bodySmall,
+                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                            )
+                            TextButton(
+                                onClick = {
+                                    val intent = BatteryOptimizationHelper.getAppSettingsIntent(context)
+                                    batterySettingsLauncher.launch(intent)
+                                }
+                            ) {
+                                Text("Open App Settings")
+                            }
+                        }
                     }
                 }
             }
