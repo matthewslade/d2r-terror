@@ -5,13 +5,11 @@ import androidx.work.CoroutineWorker
 import androidx.work.WorkerParameters
 import com.d2rterror.data.local.PreferencesManager
 import com.d2rterror.data.repository.TerrorZoneRepository
-import com.d2rterror.notification.NotificationHelper
+import com.d2rterror.notification.AlarmScheduler
 import android.util.Log
-import com.d2rterror.ui.components.getMinutesUntilNextChange
 import kotlinx.coroutines.flow.first
 import org.koin.core.component.KoinComponent
 import org.koin.core.component.inject
-import java.util.Calendar
 
 class TerrorZoneWorker(
     context: Context,
@@ -20,7 +18,7 @@ class TerrorZoneWorker(
 
     private val repository: TerrorZoneRepository by inject()
     private val preferencesManager: PreferencesManager by inject()
-    private val notificationHelper: NotificationHelper by inject()
+    private val alarmScheduler: AlarmScheduler by inject()
     private val workerScheduler: WorkerScheduler by inject()
 
     override suspend fun doWork(): Result {
@@ -48,16 +46,16 @@ class TerrorZoneWorker(
                 return Result.success()
             }
 
-            // Fetch terror zones from API
-            Log.d(TAG, "Fetching terror zones from API...")
-            val result = repository.getTerrorZones()
+            // Refresh terror zones from API (updates the repository StateFlow)
+            Log.d(TAG, "Refreshing terror zones from API...")
+            val success = repository.refresh()
 
-            result.onSuccess { state ->
+            if (success) {
+                val state = repository.terrorZoneState.value
                 Log.d(TAG, "API Success - Current zones: ${state.current.map { "${it.displayName} (IDs: ${it.matchedIds})" }}")
                 Log.d(TAG, "API Success - Next zones: ${state.next.map { "${it.displayName} (IDs: ${it.matchedIds})" }}")
 
                 // Check if any next zones match selected zones
-                // A ScrapedZone matches if any of its matchedIds are in selectedZoneIds
                 val matchingZones = state.next.filter { scrapedZone ->
                     val matches = scrapedZone.matchedIds.any { it in selectedZoneIds }
                     Log.d(TAG, "Zone '${scrapedZone.displayName}' matchedIds=${scrapedZone.matchedIds} matches selected=$matches")
@@ -67,59 +65,18 @@ class TerrorZoneWorker(
                 Log.d(TAG, "Matching zones count: ${matchingZones.size}")
 
                 if (matchingZones.isNotEmpty()) {
-                    // Check quiet hours before notifying
-                    val quietHoursEnabled = preferencesManager.quietHoursEnabled.first()
-                    val quietStart = preferencesManager.quietHoursStart.first()
-                    val quietEnd = preferencesManager.quietHoursEnd.first()
-                    val calendar = Calendar.getInstance()
-                    val currentMinutes = calendar.get(Calendar.HOUR_OF_DAY) * 60 + calendar.get(Calendar.MINUTE)
+                    // Get notification times from preferences
+                    val notificationTimes = preferencesManager.notificationTimes.first()
+                    Log.d(TAG, "Scheduling alarms for notification times: $notificationTimes")
 
-                    Log.d(TAG, "Quiet hours enabled: $quietHoursEnabled, start: $quietStart, end: $quietEnd, current: $currentMinutes")
-
-                    val isInQuietHours = if (quietHoursEnabled) {
-                        preferencesManager.isInQuietHours(currentMinutes, quietStart, quietEnd)
-                    } else {
-                        false
-                    }
-
-                    Log.d(TAG, "Is in quiet hours: $isInQuietHours")
-
-                    // Skip notification if in quiet hours
-                    if (isInQuietHours) {
-                        Log.d(TAG, "In quiet hours, skipping notification but rescheduling")
-                        workerScheduler.scheduleZoneCheck(forceReplace = true)
-                        return@onSuccess
-                    }
-
-                    // Create a unique key for this zone set to prevent duplicate notifications
-                    val allMatchedIds = matchingZones.flatMap { it.matchedIds }.sorted()
-                    val zoneKey = allMatchedIds.joinToString(",")
-                    val lastNotifiedZone = preferencesManager.lastNotifiedZone.first()
-                    val lastNotificationTime = preferencesManager.lastNotificationTime.first()
-
-                    // Only notify if we haven't already notified for this exact zone set recently
-                    // (within the last 25 minutes to account for the 30-minute cycle)
-                    val currentTime = System.currentTimeMillis()
-                    val timeSinceLastNotification = currentTime - lastNotificationTime
-                    val twentyFiveMinutesMs = 25 * 60 * 1000L
-
-                    Log.d(TAG, "Zone key: $zoneKey, last notified: $lastNotifiedZone, time since last: ${timeSinceLastNotification/1000}s")
-
-                    if (zoneKey != lastNotifiedZone || timeSinceLastNotification > twentyFiveMinutesMs) {
-                        val minutesUntilActive = getMinutesUntilNextChange()
-                        Log.d(TAG, "SENDING NOTIFICATION for ${matchingZones.map { it.displayName }}, minutes until active: $minutesUntilActive")
-                        notificationHelper.showZoneNotification(matchingZones, minutesUntilActive)
-                        preferencesManager.setLastNotification(zoneKey, currentTime)
-                    } else {
-                        Log.d(TAG, "Skipping duplicate notification")
-                    }
+                    // Schedule alarms for each notification time
+                    alarmScheduler.scheduleNotificationAlarms(matchingZones, notificationTimes)
                 } else {
-                    Log.d(TAG, "No matching zones found")
+                    Log.d(TAG, "No matching zones found, cancelling any pending alarms")
+                    alarmScheduler.cancelAllAlarms()
                 }
-            }
-
-            result.onFailure { error ->
-                Log.e(TAG, "API Error: ${error.message}", error)
+            } else {
+                Log.e(TAG, "API Error: ${repository.terrorZoneState.value.error}")
             }
 
             // Schedule the next check

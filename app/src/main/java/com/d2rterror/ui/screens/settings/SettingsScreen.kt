@@ -11,21 +11,25 @@ import androidx.compose.material.icons.filled.CheckCircle
 import androidx.lifecycle.Lifecycle
 import androidx.lifecycle.compose.LifecycleEventEffect
 import com.d2rterror.util.BatteryOptimizationHelper
+import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
-import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material.icons.filled.Add
 import androidx.compose.material.icons.filled.Bedtime
-import androidx.compose.material.icons.filled.Check
+import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Notifications
 import androidx.compose.material.icons.filled.Schedule
+import kotlinx.coroutines.delay
 import androidx.compose.material3.*
 import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.style.TextAlign
+import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.core.content.ContextCompat
 import com.d2rterror.data.local.PreferencesManager
@@ -36,36 +40,31 @@ import kotlin.math.roundToInt
 @OptIn(ExperimentalMaterial3Api::class)
 @Composable
 fun SettingsScreen(
-    onNavigateBack: () -> Unit,
+    bottomPadding: Dp = 0.dp,
     viewModel: SettingsViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val context = LocalContext.current
 
-    // Local state for editing - initialized from uiState
-    var localNotificationsEnabled by remember { mutableStateOf(uiState.notificationsEnabled) }
-    var localAdvanceMinutes by remember { mutableIntStateOf(uiState.advanceNotificationMinutes) }
-    var localQuietHoursEnabled by remember { mutableStateOf(uiState.quietHoursEnabled) }
-    var localQuietHoursStart by remember { mutableIntStateOf(uiState.quietHoursStart) }
-    var localQuietHoursEnd by remember { mutableIntStateOf(uiState.quietHoursEnd) }
+    // Local state for notification times (with debounced save)
+    var localNotificationTimes by remember { mutableStateOf(uiState.notificationTimes) }
 
-    // Sync local state when uiState loads from storage (only on initial load)
-    LaunchedEffect(Unit) {
-        viewModel.uiState.collect { state ->
-            localNotificationsEnabled = state.notificationsEnabled
-            localAdvanceMinutes = state.advanceNotificationMinutes
-            localQuietHoursEnabled = state.quietHoursEnabled
-            localQuietHoursStart = state.quietHoursStart
-            localQuietHoursEnd = state.quietHoursEnd
-        }
+    // Dialog state for adding new notification time
+    var showAddTimeDialog by remember { mutableStateOf(false) }
+
+    // Sync local notification times when uiState loads from storage
+    LaunchedEffect(uiState.notificationTimes) {
+        localNotificationTimes = uiState.notificationTimes
     }
 
-    // Check if there are unsaved changes
-    val hasChanges = localNotificationsEnabled != uiState.notificationsEnabled ||
-            localAdvanceMinutes != uiState.advanceNotificationMinutes ||
-            localQuietHoursEnabled != uiState.quietHoursEnabled ||
-            localQuietHoursStart != uiState.quietHoursStart ||
-            localQuietHoursEnd != uiState.quietHoursEnd
+    // Debounced save for notification times (2 second delay)
+    LaunchedEffect(localNotificationTimes) {
+        // Skip if it matches the saved state (no change)
+        if (localNotificationTimes == uiState.notificationTimes) return@LaunchedEffect
+
+        delay(2000L) // 2 second debounce
+        viewModel.saveNotificationTimes(localNotificationTimes)
+    }
 
     var hasNotificationPermission by remember {
         mutableStateOf(
@@ -107,59 +106,25 @@ fun SettingsScreen(
         isIgnoringBatteryOptimizations = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
     }
 
-    Scaffold(
-        topBar = {
-            TopAppBar(
-                title = {
-                    Text(
-                        text = "Settings",
-                        fontWeight = FontWeight.Bold
-                    )
-                },
-                navigationIcon = {
-                    IconButton(onClick = onNavigateBack) {
-                        Icon(
-                            imageVector = Icons.AutoMirrored.Filled.ArrowBack,
-                            contentDescription = "Back"
-                        )
-                    }
-                },
-                actions = {
-                    // Save button - only enabled when there are changes
-                    IconButton(
-                        onClick = {
-                            viewModel.saveAllSettings(
-                                notificationsEnabled = localNotificationsEnabled,
-                                advanceMinutes = localAdvanceMinutes,
-                                quietHoursEnabled = localQuietHoursEnabled,
-                                quietHoursStart = localQuietHoursStart,
-                                quietHoursEnd = localQuietHoursEnd
-                            )
-                            onNavigateBack()
-                        },
-                        enabled = hasChanges
-                    ) {
-                        Icon(
-                            imageVector = Icons.Default.Check,
-                            contentDescription = "Save",
-                            tint = if (hasChanges) D2RGold else MaterialTheme.colorScheme.onSurfaceVariant
-                        )
-                    }
-                },
-                colors = TopAppBarDefaults.topAppBarColors(
-                    containerColor = MaterialTheme.colorScheme.background,
-                    titleContentColor = D2RGold
-                )
-            )
-        },
-        containerColor = MaterialTheme.colorScheme.background
-    ) { paddingValues ->
+    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
+    val topBarHeight = 64.dp
+
+    Box(
+        modifier = Modifier
+            .fillMaxSize()
+            .background(MaterialTheme.colorScheme.background)
+    ) {
+        // Content (draws behind TopAppBar)
         Column(
             modifier = Modifier
                 .fillMaxSize()
-                .padding(paddingValues)
                 .verticalScroll(rememberScrollState())
-                .padding(16.dp),
+                .padding(
+                    top = statusBarPadding + topBarHeight + 8.dp,
+                    start = 16.dp,
+                    end = 16.dp,
+                    bottom = bottomPadding + 16.dp
+                ),
             verticalArrangement = Arrangement.spacedBy(16.dp)
         ) {
             // Notifications Section
@@ -202,7 +167,7 @@ fun SettingsScreen(
                                 style = MaterialTheme.typography.bodyLarge
                             )
                             Text(
-                                text = if (localNotificationsEnabled)
+                                text = if (uiState.notificationsEnabled)
                                     "App checks zones in background and notifies you"
                                 else
                                     "No background activity when disabled",
@@ -212,14 +177,14 @@ fun SettingsScreen(
                         }
 
                         Switch(
-                            checked = localNotificationsEnabled && hasNotificationPermission,
+                            checked = uiState.notificationsEnabled && hasNotificationPermission,
                             onCheckedChange = { enabled ->
                                 if (enabled && !hasNotificationPermission) {
                                     if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
                                         permissionLauncher.launch(Manifest.permission.POST_NOTIFICATIONS)
                                     }
                                 } else {
-                                    localNotificationsEnabled = enabled
+                                    viewModel.setNotificationsEnabled(enabled)
                                 }
                             }
                         )
@@ -262,69 +227,86 @@ fun SettingsScreen(
             ) {
                 Column(
                     modifier = Modifier.padding(16.dp),
-                    verticalArrangement = Arrangement.spacedBy(16.dp)
+                    verticalArrangement = Arrangement.spacedBy(12.dp)
                 ) {
                     Row(
-                        verticalAlignment = Alignment.CenterVertically
+                        verticalAlignment = Alignment.CenterVertically,
+                        modifier = Modifier.fillMaxWidth(),
+                        horizontalArrangement = Arrangement.SpaceBetween
                     ) {
-                        Icon(
-                            imageVector = Icons.Default.Schedule,
-                            contentDescription = null,
-                            tint = MaterialTheme.colorScheme.primary
-                        )
-                        Spacer(modifier = Modifier.width(8.dp))
-                        Text(
-                            text = "Notification Timing",
-                            style = MaterialTheme.typography.titleMedium,
-                            fontWeight = FontWeight.Bold,
-                            color = MaterialTheme.colorScheme.primary
-                        )
-                    }
-
-                    Text(
-                        text = "Get notified $localAdvanceMinutes minutes before zone becomes active",
-                        style = MaterialTheme.typography.bodyMedium,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-
-                    // Slider for advance notification time
-                    Column {
-                        Slider(
-                            value = localAdvanceMinutes.toFloat(),
-                            onValueChange = { value ->
-                                localAdvanceMinutes = value.roundToInt()
-                            },
-                            valueRange = PreferencesManager.MIN_ADVANCE_MINUTES.toFloat()..PreferencesManager.MAX_ADVANCE_MINUTES.toFloat(),
-                            steps = PreferencesManager.MAX_ADVANCE_MINUTES - PreferencesManager.MIN_ADVANCE_MINUTES - 1,
-                            colors = SliderDefaults.colors(
-                                thumbColor = MaterialTheme.colorScheme.primary,
-                                activeTrackColor = MaterialTheme.colorScheme.primary
+                        Row(verticalAlignment = Alignment.CenterVertically) {
+                            Icon(
+                                imageVector = Icons.Default.Schedule,
+                                contentDescription = null,
+                                tint = MaterialTheme.colorScheme.primary
                             )
-                        )
-
-                        Row(
-                            modifier = Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.SpaceBetween
-                        ) {
+                            Spacer(modifier = Modifier.width(8.dp))
                             Text(
-                                text = "${PreferencesManager.MIN_ADVANCE_MINUTES} min",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                                text = "Notification Times",
+                                style = MaterialTheme.typography.titleMedium,
+                                fontWeight = FontWeight.Bold,
+                                color = MaterialTheme.colorScheme.primary
                             )
-                            Text(
-                                text = "$localAdvanceMinutes min",
-                                style = MaterialTheme.typography.labelLarge,
-                                color = MaterialTheme.colorScheme.primary,
-                                fontWeight = FontWeight.Bold
-                            )
-                            Text(
-                                text = "${PreferencesManager.MAX_ADVANCE_MINUTES} min",
-                                style = MaterialTheme.typography.labelSmall,
-                                color = MaterialTheme.colorScheme.onSurfaceVariant
+                        }
+                        IconButton(onClick = { showAddTimeDialog = true }) {
+                            Icon(
+                                imageVector = Icons.Default.Add,
+                                contentDescription = "Add notification time",
+                                tint = MaterialTheme.colorScheme.primary
                             )
                         }
                     }
+
+                    Text(
+                        text = "Get notified at multiple times before each zone change",
+                        style = MaterialTheme.typography.bodySmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+
+                    // List of notification times
+                    localNotificationTimes.toList().sorted().forEach { minutes ->
+                        Row(
+                            modifier = Modifier
+                                .fillMaxWidth()
+                                .padding(vertical = 4.dp),
+                            horizontalArrangement = Arrangement.SpaceBetween,
+                            verticalAlignment = Alignment.CenterVertically
+                        ) {
+                            Text(
+                                text = "$minutes minutes before",
+                                style = MaterialTheme.typography.bodyLarge
+                            )
+                            // Only show delete button if more than one time exists
+                            if (localNotificationTimes.size > 1) {
+                                IconButton(
+                                    onClick = {
+                                        localNotificationTimes = localNotificationTimes - minutes
+                                    },
+                                    modifier = Modifier.size(36.dp)
+                                ) {
+                                    Icon(
+                                        imageVector = Icons.Default.Delete,
+                                        contentDescription = "Remove",
+                                        tint = MaterialTheme.colorScheme.error,
+                                        modifier = Modifier.size(20.dp)
+                                    )
+                                }
+                            }
+                        }
+                    }
                 }
+            }
+
+            // Add Time Dialog
+            if (showAddTimeDialog) {
+                AddNotificationTimeDialog(
+                    existingTimes = localNotificationTimes,
+                    onTimeSelected = { minutes ->
+                        localNotificationTimes = localNotificationTimes + minutes
+                        showAddTimeDialog = false
+                    },
+                    onDismiss = { showAddTimeDialog = false }
+                )
             }
 
             // Quiet Hours Section
@@ -374,15 +356,15 @@ fun SettingsScreen(
                         }
 
                         Switch(
-                            checked = localQuietHoursEnabled,
+                            checked = uiState.quietHoursEnabled,
                             onCheckedChange = { enabled ->
-                                localQuietHoursEnabled = enabled
+                                viewModel.setQuietHoursEnabled(enabled)
                             }
                         )
                     }
 
                     // Time pickers (only shown when quiet hours enabled)
-                    if (localQuietHoursEnabled) {
+                    if (uiState.quietHoursEnabled) {
                         HorizontalDivider()
 
                         // Start Time
@@ -398,7 +380,7 @@ fun SettingsScreen(
                             )
                             TextButton(onClick = { showStartTimePicker = true }) {
                                 Text(
-                                    text = formatMinutesToTime(localQuietHoursStart),
+                                    text = formatMinutesToTime(uiState.quietHoursStart),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -407,10 +389,10 @@ fun SettingsScreen(
 
                         if (showStartTimePicker) {
                             TimePickerDialog(
-                                initialHour = localQuietHoursStart / 60,
-                                initialMinute = localQuietHoursStart % 60,
+                                initialHour = uiState.quietHoursStart / 60,
+                                initialMinute = uiState.quietHoursStart % 60,
                                 onTimeSelected = { hour, minute ->
-                                    localQuietHoursStart = hour * 60 + minute
+                                    viewModel.setQuietHoursStart(hour * 60 + minute)
                                     showStartTimePicker = false
                                 },
                                 onDismiss = { showStartTimePicker = false }
@@ -430,7 +412,7 @@ fun SettingsScreen(
                             )
                             TextButton(onClick = { showEndTimePicker = true }) {
                                 Text(
-                                    text = formatMinutesToTime(localQuietHoursEnd),
+                                    text = formatMinutesToTime(uiState.quietHoursEnd),
                                     style = MaterialTheme.typography.bodyLarge,
                                     fontWeight = FontWeight.Bold
                                 )
@@ -439,10 +421,10 @@ fun SettingsScreen(
 
                         if (showEndTimePicker) {
                             TimePickerDialog(
-                                initialHour = localQuietHoursEnd / 60,
-                                initialMinute = localQuietHoursEnd % 60,
+                                initialHour = uiState.quietHoursEnd / 60,
+                                initialMinute = uiState.quietHoursEnd % 60,
                                 onTimeSelected = { hour, minute ->
-                                    localQuietHoursEnd = hour * 60 + minute
+                                    viewModel.setQuietHoursEnd(hour * 60 + minute)
                                     showEndTimePicker = false
                                 },
                                 onDismiss = { showEndTimePicker = false }
@@ -451,7 +433,7 @@ fun SettingsScreen(
 
                         // Summary
                         Text(
-                            text = "Notifications silenced from ${formatMinutesToTime(localQuietHoursStart)} to ${formatMinutesToTime(localQuietHoursEnd)}",
+                            text = "Notifications silenced from ${formatMinutesToTime(uiState.quietHoursStart)} to ${formatMinutesToTime(uiState.quietHoursEnd)}",
                             style = MaterialTheme.typography.bodySmall,
                             color = MaterialTheme.colorScheme.onSurfaceVariant
                         )
@@ -585,6 +567,21 @@ fun SettingsScreen(
                 }
             }
         }
+
+        // TopAppBar (overlaid on top, semi-transparent)
+        TopAppBar(
+            title = {
+                Text(
+                    text = "Settings",
+                    fontWeight = FontWeight.Bold
+                )
+            },
+            colors = TopAppBarDefaults.topAppBarColors(
+                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                titleContentColor = D2RGold
+            ),
+            modifier = Modifier.statusBarsPadding()
+        )
     }
 }
 
@@ -638,6 +635,87 @@ private fun TimePickerDialog(
         },
         text = {
             TimePicker(state = timePickerState)
+        }
+    )
+}
+
+/**
+ * Dialog for adding a new notification time
+ */
+@Composable
+private fun AddNotificationTimeDialog(
+    existingTimes: Set<Int>,
+    onTimeSelected: (Int) -> Unit,
+    onDismiss: () -> Unit
+) {
+    // Available times that aren't already selected
+    val availableTimes = (PreferencesManager.MIN_ADVANCE_MINUTES..PreferencesManager.MAX_ADVANCE_MINUTES)
+        .filter { it !in existingTimes }
+
+    if (availableTimes.isEmpty()) {
+        AlertDialog(
+            onDismissRequest = onDismiss,
+            confirmButton = {
+                TextButton(onClick = onDismiss) {
+                    Text("OK")
+                }
+            },
+            title = { Text("All Times Added") },
+            text = { Text("You've added all available notification times (1-30 minutes).") }
+        )
+        return
+    }
+
+    var selectedMinutes by remember { mutableIntStateOf(availableTimes.first()) }
+
+    AlertDialog(
+        onDismissRequest = onDismiss,
+        confirmButton = {
+            TextButton(
+                onClick = { onTimeSelected(selectedMinutes) }
+            ) {
+                Text("Add")
+            }
+        },
+        dismissButton = {
+            TextButton(onClick = onDismiss) {
+                Text("Cancel")
+            }
+        },
+        title = { Text("Add Notification Time") },
+        text = {
+            Column(
+                verticalArrangement = Arrangement.spacedBy(16.dp)
+            ) {
+                Text("Select how many minutes before zone change to notify:")
+
+                // Slider for selecting minutes
+                Column {
+                    Slider(
+                        value = selectedMinutes.toFloat(),
+                        onValueChange = { value ->
+                            // Snap to nearest available time
+                            val target = value.roundToInt()
+                            selectedMinutes = availableTimes.minByOrNull { kotlin.math.abs(it - target) }
+                                ?: availableTimes.first()
+                        },
+                        valueRange = PreferencesManager.MIN_ADVANCE_MINUTES.toFloat()..PreferencesManager.MAX_ADVANCE_MINUTES.toFloat(),
+                        colors = SliderDefaults.colors(
+                            thumbColor = MaterialTheme.colorScheme.primary,
+                            activeTrackColor = MaterialTheme.colorScheme.primary
+                        )
+                    )
+
+                    Text(
+                        text = "$selectedMinutes minutes before",
+                        style = MaterialTheme.typography.titleMedium,
+                        fontWeight = FontWeight.Bold,
+                        color = MaterialTheme.colorScheme.primary,
+                        modifier = Modifier.fillMaxWidth(),
+                        textAlign = TextAlign.Center
+                    )
+                }
+            }
         }
     )
 }

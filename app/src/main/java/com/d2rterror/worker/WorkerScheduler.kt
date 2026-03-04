@@ -3,41 +3,33 @@ package com.d2rterror.worker
 import android.content.Context
 import android.util.Log
 import androidx.work.*
-import com.d2rterror.data.local.PreferencesManager
-import kotlinx.coroutines.flow.first
-import kotlinx.coroutines.runBlocking
 import java.time.Duration
 import java.time.LocalDateTime
 import java.util.concurrent.TimeUnit
 
 class WorkerScheduler(
-    private val context: Context,
-    private val preferencesManager: PreferencesManager
+    private val context: Context
 ) {
 
     private val workManager = WorkManager.getInstance(context)
 
     companion object {
         private const val TAG = "WorkerScheduler"
+        // Check at :01 and :31 (1 minute after zone change for API freshness)
+        private const val CHECK_MINUTE_FIRST = 1   // For :00 zone change
+        private const val CHECK_MINUTE_SECOND = 31 // For :30 zone change
     }
 
     /**
-     * Schedule the next terror zone check based on user's advance notification preference.
-     *
-     * For example, if user wants 5 minutes advance notice:
-     * - Zone changes at :30 → check at :25
-     * - Zone changes at :00 → check at :55 (of previous hour)
+     * Schedule the next terror zone check at fixed times (:01 and :31).
+     * WorkManager fetches fresh zone data, then AlarmScheduler handles exact notification timing.
      *
      * @param forceReplace If true, replaces any existing work (use when settings change).
      *                     If false, uses KEEP policy to not disrupt existing/running work.
      */
     fun scheduleZoneCheck(forceReplace: Boolean = false) {
-        val advanceMinutes = runBlocking {
-            preferencesManager.advanceNotificationMinutes.first()
-        }
-
         val now = LocalDateTime.now()
-        val nextCheckTime = calculateNextCheckTime(now, advanceMinutes)
+        val nextCheckTime = calculateNextCheckTime(now)
         val delayMillis = Duration.between(now, nextCheckTime).toMillis()
 
         // Ensure minimum delay of 1 minute
@@ -65,33 +57,26 @@ class WorkerScheduler(
 
     /**
      * Calculate the next time we should check for terror zones.
+     * Always targets :01 and :31 (1 minute after zone changes).
      *
      * @param now Current time
-     * @param advanceMinutes How many minutes before zone change to notify
      * @return The next check time
      */
-    private fun calculateNextCheckTime(now: LocalDateTime, advanceMinutes: Int): LocalDateTime {
+    private fun calculateNextCheckTime(now: LocalDateTime): LocalDateTime {
         val minute = now.minute
-        val second = now.second
-
-        // Zone changes happen at :00 and :30
-        // We want to check at (30 - advanceMinutes) and (60 - advanceMinutes)
-
-        val checkMinuteForHalfHour = 30 - advanceMinutes  // e.g., 25 for 5 min advance
-        val checkMinuteForHour = 60 - advanceMinutes      // e.g., 55 for 5 min advance
 
         return when {
-            // If we're before the first check time (for :30 change)
-            minute < checkMinuteForHalfHour -> {
-                now.withMinute(checkMinuteForHalfHour).withSecond(0).withNano(0)
+            // Before :01 - schedule for :01
+            minute < CHECK_MINUTE_FIRST -> {
+                now.withMinute(CHECK_MINUTE_FIRST).withSecond(0).withNano(0)
             }
-            // If we're between the two check times
-            minute < checkMinuteForHour -> {
-                now.withMinute(checkMinuteForHour).withSecond(0).withNano(0)
+            // Between :01 and :31 - schedule for :31
+            minute < CHECK_MINUTE_SECOND -> {
+                now.withMinute(CHECK_MINUTE_SECOND).withSecond(0).withNano(0)
             }
-            // We're past both check times, schedule for next hour's first check
+            // After :31 - schedule for next hour's :01
             else -> {
-                now.plusHours(1).withMinute(checkMinuteForHalfHour).withSecond(0).withNano(0)
+                now.plusHours(1).withMinute(CHECK_MINUTE_FIRST).withSecond(0).withNano(0)
             }
         }
     }

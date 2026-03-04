@@ -12,6 +12,9 @@ import com.d2rterror.MainActivity
 import com.d2rterror.R
 import com.d2rterror.data.api.ScrapedZone
 import com.d2rterror.data.local.ZoneData
+import java.text.SimpleDateFormat
+import java.util.Calendar
+import java.util.Locale
 
 class NotificationHelper(private val context: Context) {
 
@@ -75,7 +78,13 @@ class NotificationHelper(private val context: Context) {
 
         val title = context.getString(R.string.notification_title)
         val content = "$zoneNames ($actInfo)"
-        val subText = context.getString(R.string.time_until_active, minutesUntilActive)
+
+        // Calculate start time
+        val startTime = Calendar.getInstance().apply {
+            add(Calendar.MINUTE, minutesUntilActive)
+        }
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val subText = context.getString(R.string.time_until_active, minutesUntilActive, timeFormat.format(startTime.time))
 
         val notification = NotificationCompat.Builder(context, CHANNEL_ID)
             .setSmallIcon(R.drawable.ic_notification)
@@ -84,7 +93,7 @@ class NotificationHelper(private val context: Context) {
             .setSubText(subText)
             .setStyle(
                 NotificationCompat.BigTextStyle()
-                    .bigText("$content\n\n$subText")
+                    .bigText("$content\n$subText")
             )
             .setPriority(NotificationCompat.PRIORITY_HIGH)
             .setCategory(NotificationCompat.CATEGORY_REMINDER)
@@ -102,5 +111,86 @@ class NotificationHelper(private val context: Context) {
 
     fun cancelNotification() {
         NotificationManagerCompat.from(context).cancel(NOTIFICATION_ID)
+    }
+
+    /**
+     * Show notification from an alarm trigger with pre-formatted zone data.
+     *
+     * @param zoneNames Comma-separated zone display names
+     * @param zoneActs Comma-separated act numbers
+     * @param minutesUntilActive Minutes until zone becomes active
+     * @param notificationId Unique notification ID (for multiple concurrent notifications)
+     */
+    fun showZoneNotificationFromAlarm(
+        zoneNames: String,
+        zoneActs: String,
+        minutesUntilActive: Int,
+        notificationId: Int = NOTIFICATION_ID
+    ) {
+        val intent = Intent(context, MainActivity::class.java).apply {
+            flags = Intent.FLAG_ACTIVITY_NEW_TASK or Intent.FLAG_ACTIVITY_CLEAR_TASK
+        }
+
+        val pendingIntent = PendingIntent.getActivity(
+            context,
+            notificationId,
+            intent,
+            PendingIntent.FLAG_UPDATE_CURRENT or PendingIntent.FLAG_IMMUTABLE
+        )
+
+        // Format act info
+        val actInfo = zoneActs.split(",")
+            .filter { it.isNotBlank() }
+            .mapNotNull { it.trim().toIntOrNull() }
+            .distinct()
+            .sorted()
+            .map { act ->
+                when (act) {
+                    1 -> "Act I"
+                    2 -> "Act II"
+                    3 -> "Act III"
+                    4 -> "Act IV"
+                    5 -> "Act V"
+                    else -> ""
+                }
+            }
+            .filter { it.isNotEmpty() }
+            .joinToString(", ")
+
+        val title = context.getString(R.string.notification_title)
+        val content = if (actInfo.isNotEmpty()) "$zoneNames ($actInfo)" else zoneNames
+
+        // Calculate start time
+        val startTime = Calendar.getInstance().apply {
+            add(Calendar.MINUTE, minutesUntilActive)
+        }
+        val timeFormat = SimpleDateFormat("HH:mm", Locale.getDefault())
+        val subText = context.getString(R.string.time_until_active, minutesUntilActive, timeFormat.format(startTime.time))
+
+        val notification = NotificationCompat.Builder(context, CHANNEL_ID)
+            .setSmallIcon(R.drawable.ic_notification)
+            .setContentTitle(title)
+            .setContentText(content)
+            .setSubText(subText)
+            .setStyle(
+                NotificationCompat.BigTextStyle()
+                    .bigText("$content\n$subText")
+            )
+            .setPriority(NotificationCompat.PRIORITY_HIGH)
+            .setCategory(NotificationCompat.CATEGORY_REMINDER)
+            .setAutoCancel(true)
+            .setContentIntent(pendingIntent)
+            .setVisibility(NotificationCompat.VISIBILITY_PUBLIC)
+            .build()
+
+        try {
+            NotificationManagerCompat.from(context).notify(notificationId, notification)
+        } catch (e: SecurityException) {
+            // Permission not granted, ignore
+        }
+    }
+
+    fun cancelNotification(notificationId: Int) {
+        NotificationManagerCompat.from(context).cancel(notificationId)
     }
 }
