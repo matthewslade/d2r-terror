@@ -40,6 +40,12 @@
             </intent-filter>
         </receiver>
 
+        <!-- Notification Alarm Receiver for exact notification timing -->
+        <receiver
+            android:name=".notification.NotificationAlarmReceiver"
+            android:enabled="true"
+            android:exported="false" />
+
     </application>
 
 </manifest>

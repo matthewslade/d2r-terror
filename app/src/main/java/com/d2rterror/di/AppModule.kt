@@ -3,6 +3,7 @@ package com.d2rterror.di
 import com.d2rterror.data.api.TerrorZoneScraper
 import com.d2rterror.data.local.PreferencesManager
 import com.d2rterror.data.repository.TerrorZoneRepository
+import com.d2rterror.notification.AlarmScheduler
 import com.d2rterror.notification.NotificationHelper
 import com.d2rterror.ui.screens.home.HomeViewModel
 import com.d2rterror.ui.screens.settings.SettingsViewModel
@@ -50,9 +51,14 @@ val appModule = module {
         NotificationHelper(androidContext())
     }
 
+    // Alarm Scheduler
+    single {
+        AlarmScheduler(androidContext())
+    }
+
     // Worker Scheduler
     single {
-        WorkerScheduler(androidContext(), get())
+        WorkerScheduler(androidContext())
     }
 
     // ViewModels

@@ -10,6 +10,7 @@ import kotlinx.coroutines.launch
 data class SettingsUiState(
     val notificationsEnabled: Boolean = true,
     val advanceNotificationMinutes: Int = PreferencesManager.DEFAULT_ADVANCE_MINUTES,
+    val notificationTimes: Set<Int> = setOf(PreferencesManager.DEFAULT_ADVANCE_MINUTES),
     val selectedZonesCount: Int = 0,
     val quietHoursEnabled: Boolean = false,
     val quietHoursStart: Int = PreferencesManager.DEFAULT_QUIET_START,
@@ -24,6 +25,7 @@ class SettingsViewModel(
     val uiState: StateFlow<SettingsUiState> = combine(
         preferencesManager.notificationsEnabled,
         preferencesManager.advanceNotificationMinutes,
+        preferencesManager.notificationTimes,
         preferencesManager.selectedZones,
         preferencesManager.quietHoursEnabled,
         preferencesManager.quietHoursStart,
@@ -32,14 +34,16 @@ class SettingsViewModel(
         @Suppress("UNCHECKED_CAST")
         val notificationsEnabled = values[0] as Boolean
         val advanceMinutes = values[1] as Int
-        val selectedZones = values[2] as Set<Int>
-        val quietHoursEnabled = values[3] as Boolean
-        val quietHoursStart = values[4] as Int
-        val quietHoursEnd = values[5] as Int
+        val notificationTimes = values[2] as Set<Int>
+        val selectedZones = values[3] as Set<Int>
+        val quietHoursEnabled = values[4] as Boolean
+        val quietHoursStart = values[5] as Int
+        val quietHoursEnd = values[6] as Int
 
         SettingsUiState(
             notificationsEnabled = notificationsEnabled,
             advanceNotificationMinutes = advanceMinutes,
+            notificationTimes = notificationTimes,
             selectedZonesCount = selectedZones.size,
             quietHoursEnabled = quietHoursEnabled,
             quietHoursStart = quietHoursStart,
@@ -72,6 +76,29 @@ class SettingsViewModel(
         }
     }
 
+    fun addNotificationTime(minutes: Int) {
+        viewModelScope.launch {
+            preferencesManager.addNotificationTime(minutes)
+        }
+    }
+
+    fun removeNotificationTime(minutes: Int) {
+        viewModelScope.launch {
+            preferencesManager.removeNotificationTime(minutes)
+        }
+    }
+
+    /**
+     * Save notification times and clear last notification to allow re-testing.
+     * Called after debounce when user modifies notification times.
+     */
+    fun saveNotificationTimes(times: Set<Int>) {
+        viewModelScope.launch {
+            preferencesManager.setNotificationTimes(times)
+            preferencesManager.clearLastNotification()
+        }
+    }
+
     fun setQuietHoursEnabled(enabled: Boolean) {
         viewModelScope.launch {
             preferencesManager.setQuietHoursEnabled(enabled)
@@ -87,38 +114,6 @@ class SettingsViewModel(
     fun setQuietHoursEnd(minutesFromMidnight: Int) {
         viewModelScope.launch {
             preferencesManager.setQuietHoursEnd(minutesFromMidnight)
-        }
-    }
-
-    /**
-     * Save all settings at once and reschedule worker if needed.
-     * Called when user presses the save button.
-     * Also clears last notification tracking to allow re-testing.
-     */
-    fun saveAllSettings(
-        notificationsEnabled: Boolean,
-        advanceMinutes: Int,
-        quietHoursEnabled: Boolean,
-        quietHoursStart: Int,
-        quietHoursEnd: Int
-    ) {
-        viewModelScope.launch {
-            // Save all preferences
-            preferencesManager.setNotificationsEnabled(notificationsEnabled)
-            preferencesManager.setAdvanceNotificationMinutes(advanceMinutes)
-            preferencesManager.setQuietHoursEnabled(quietHoursEnabled)
-            preferencesManager.setQuietHoursStart(quietHoursStart)
-            preferencesManager.setQuietHoursEnd(quietHoursEnd)
-
-            // Clear last notification to allow re-testing
-            preferencesManager.clearLastNotification()
-
-            // Handle worker scheduling
-            if (notificationsEnabled) {
-                workerScheduler.scheduleZoneCheck(forceReplace = true)
-            } else {
-                workerScheduler.cancelZoneCheck()
-            }
         }
     }
 }

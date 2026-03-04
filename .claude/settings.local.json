@@ -1,0 +1,8 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(./gradlew assembleDebug:*)",
+      "Bash(/Users/gary/repos/gary/d2r-terror/gradlew:*)"
+    ]
+  }
+}

@@ -14,7 +14,8 @@ class PreferencesManager(private val context: Context) {
     companion object {
         private val SELECTED_ZONES = stringSetPreferencesKey("selected_zones")
         private val NOTIFICATIONS_ENABLED = booleanPreferencesKey("notifications_enabled")
-        private val ADVANCE_NOTIFICATION_MINUTES = intPreferencesKey("advance_notification_minutes")
+        private val ADVANCE_NOTIFICATION_MINUTES = intPreferencesKey("advance_notification_minutes") // Legacy, for migration
+        private val NOTIFICATION_TIMES = stringSetPreferencesKey("notification_times") // Set of minutes as strings
         private val LAST_NOTIFIED_ZONE = stringPreferencesKey("last_notified_zone")
         private val LAST_NOTIFICATION_TIME = longPreferencesKey("last_notification_time")
         private val QUIET_HOURS_ENABLED = booleanPreferencesKey("quiet_hours_enabled")
@@ -79,7 +80,7 @@ class PreferencesManager(private val context: Context) {
         }
     }
 
-    // Advance notification time (1-30 minutes)
+    // Advance notification time (1-30 minutes) - Legacy, kept for migration
     val advanceNotificationMinutes: Flow<Int> = context.dataStore.data
         .map { preferences ->
             preferences[ADVANCE_NOTIFICATION_MINUTES] ?: DEFAULT_ADVANCE_MINUTES
@@ -89,6 +90,60 @@ class PreferencesManager(private val context: Context) {
         val clampedMinutes = minutes.coerceIn(MIN_ADVANCE_MINUTES, MAX_ADVANCE_MINUTES)
         context.dataStore.edit { preferences ->
             preferences[ADVANCE_NOTIFICATION_MINUTES] = clampedMinutes
+        }
+    }
+
+    // Multiple notification times (Set of minutes before zone change)
+    val notificationTimes: Flow<Set<Int>> = context.dataStore.data
+        .map { preferences ->
+            val times = preferences[NOTIFICATION_TIMES]
+                ?.mapNotNull { it.toIntOrNull() }
+                ?.toSet()
+
+            // If no notification times exist, migrate from legacy single value or use default
+            if (times.isNullOrEmpty()) {
+                val legacyMinutes = preferences[ADVANCE_NOTIFICATION_MINUTES] ?: DEFAULT_ADVANCE_MINUTES
+                setOf(legacyMinutes)
+            } else {
+                times
+            }
+        }
+
+    suspend fun addNotificationTime(minutes: Int) {
+        val clampedMinutes = minutes.coerceIn(MIN_ADVANCE_MINUTES, MAX_ADVANCE_MINUTES)
+        context.dataStore.edit { preferences ->
+            val current = preferences[NOTIFICATION_TIMES]
+                ?.mapNotNull { it.toIntOrNull() }
+                ?.toMutableSet()
+                ?: mutableSetOf(preferences[ADVANCE_NOTIFICATION_MINUTES] ?: DEFAULT_ADVANCE_MINUTES)
+            current.add(clampedMinutes)
+            preferences[NOTIFICATION_TIMES] = current.map { it.toString() }.toSet()
+        }
+    }
+
+    suspend fun removeNotificationTime(minutes: Int) {
+        context.dataStore.edit { preferences ->
+            val current = preferences[NOTIFICATION_TIMES]
+                ?.mapNotNull { it.toIntOrNull() }
+                ?.toMutableSet()
+                ?: mutableSetOf(preferences[ADVANCE_NOTIFICATION_MINUTES] ?: DEFAULT_ADVANCE_MINUTES)
+
+            // Ensure at least one time always exists
+            if (current.size > 1) {
+                current.remove(minutes)
+                preferences[NOTIFICATION_TIMES] = current.map { it.toString() }.toSet()
+            }
+        }
+    }
+
+    suspend fun setNotificationTimes(times: Set<Int>) {
+        val validTimes = times
+            .map { it.coerceIn(MIN_ADVANCE_MINUTES, MAX_ADVANCE_MINUTES) }
+            .toSet()
+            .ifEmpty { setOf(DEFAULT_ADVANCE_MINUTES) }
+
+        context.dataStore.edit { preferences ->
+            preferences[NOTIFICATION_TIMES] = validTimes.map { it.toString() }.toSet()
         }
     }
 

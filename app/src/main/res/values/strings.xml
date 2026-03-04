@@ -20,7 +20,7 @@
     <string name="retry">Retry</string>
     <string name="notification_channel_name">Terror Zone Alerts</string>
     <string name="notification_channel_description">Notifications for upcoming Terror Zones</string>
-    <string name="notification_title">Terror Zone Alert</string>
-    <string name="time_until_active">Active in %1$d minutes</string>
+    <string name="notification_title">Terror Zone</string>
+    <string name="time_until_active">in %1$d min at %2$s</string>
     <string name="zones_selected">%1$d zones selected</string>
 </resources>
