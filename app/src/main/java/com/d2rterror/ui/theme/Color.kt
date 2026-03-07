@@ -19,3 +19,19 @@ val D2RGreen = Color(0xFF32CD32)
 val TextPrimary = Color(0xFFE8E8E8)
 val TextSecondary = Color(0xFFB0B0B0)
 val TextMuted = Color(0xFF707070)
+
+// D2R element/immunity colors
+val D2RFire = Color(0xFFFF6633)
+val D2RCold = Color(0xFF6699FF)
+val D2RLightning = Color(0xFFFFD700)
+val D2RPoison = Color(0xFF66CC33)
+val D2RPhysical = Color(0xFFBBBBBB)
+val D2RMagic = Color(0xFFCC77FF)
+
+// Tier colors
+val TierS = Color(0xFFFF4444)
+val TierA = Color(0xFFFF8C00)
+val TierB = Color(0xFFFFD700)
+val TierC = Color(0xFF66CC66)
+val TierD = Color(0xFF6699CC)
+val TierF = Color(0xFF999999)

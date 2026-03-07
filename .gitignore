@@ -84,6 +84,7 @@ lint/tmp/
 # Secrets
 *.env
 secrets.properties
+local.settings.json
 
 # Mac
 .DS_Store

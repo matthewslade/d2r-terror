@@ -1,13 +1,13 @@
 package com.d2rterror.ui.screens.zones
 
-import androidx.compose.animation.AnimatedVisibility
-import androidx.compose.animation.expandVertically
-import androidx.compose.animation.shrinkVertically
 import androidx.compose.foundation.background
+import androidx.compose.foundation.border
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
 import androidx.compose.foundation.lazy.items
+import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.CheckBox
 import androidx.compose.material.icons.filled.CheckBoxOutlineBlank
@@ -20,38 +20,79 @@ import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
+import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
+import com.d2rterror.data.model.Element
 import com.d2rterror.data.model.TerrorZone
 import com.d2rterror.ui.components.ZoneListItem
+import com.d2rterror.ui.components.color
+import com.d2rterror.ui.components.displayName
 import com.d2rterror.ui.theme.D2RGold
 import org.koin.androidx.compose.koinViewModel
 
-@OptIn(ExperimentalMaterial3Api::class)
+@OptIn(ExperimentalMaterial3Api::class, ExperimentalLayoutApi::class)
 @Composable
 fun ZoneSelectionScreen(
     bottomPadding: Dp = 0.dp,
     viewModel: ZoneSelectionViewModel = koinViewModel()
 ) {
     val uiState by viewModel.uiState.collectAsState()
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topBarHeight = 64.dp
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Content (draws behind TopAppBar)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Column {
+                        Text(
+                            text = "My Zones",
+                            fontWeight = FontWeight.Bold
+                        )
+                        Text(
+                            text = "${uiState.selectedZoneIds.size} zones selected",
+                            style = MaterialTheme.typography.bodySmall,
+                            color = MaterialTheme.colorScheme.onSurfaceVariant
+                        )
+                    }
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                    titleContentColor = D2RGold
+                ),
+                actions = {
+                    TextButton(onClick = { viewModel.selectAll() }) {
+                        Text("All")
+                    }
+                    TextButton(onClick = { viewModel.clearAll() }) {
+                        Text("None")
+                    }
+                }
+            )
+        }
+    ) { innerPadding ->
         LazyColumn(
             modifier = Modifier.fillMaxSize(),
             contentPadding = PaddingValues(
-                top = statusBarPadding + topBarHeight + 8.dp,
+                top = innerPadding.calculateTopPadding(),
                 bottom = bottomPadding + 8.dp
             )
         ) {
-            uiState.zonesByAct.forEach { (act, zones) ->
+            // Immunity filter section
+            item(key = "immunity_filter") {
+                ImmunityFilterRow(
+                    excludedImmunities = uiState.excludedImmunities,
+                    onToggle = { viewModel.toggleImmunityFilter(it) },
+                    onClear = { viewModel.clearFilters() }
+                )
+            }
+
+            // Use filtered zones for display
+            uiState.filteredZonesByAct.forEach { (act, zones) ->
                 item(key = "act_header_$act") {
                     ActHeader(
                         act = act,
@@ -86,36 +127,102 @@ fun ZoneSelectionScreen(
                 }
             }
         }
+    }
+}
 
-        // TopAppBar (overlaid on top, semi-transparent)
-        TopAppBar(
-            title = {
-                Column {
-                    Text(
-                        text = "My Zones",
-                        fontWeight = FontWeight.Bold
-                    )
-                    Text(
-                        text = "${uiState.selectedZoneIds.size} zones selected",
-                        style = MaterialTheme.typography.bodySmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
-                titleContentColor = D2RGold
-            ),
-            actions = {
-                TextButton(onClick = { viewModel.selectAll() }) {
-                    Text("All")
-                }
-                TextButton(onClick = { viewModel.clearAll() }) {
-                    Text("None")
-                }
-            },
-            modifier = Modifier.statusBarsPadding()
-        )
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun ImmunityFilterRow(
+    excludedImmunities: Set<Element>,
+    onToggle: (Element) -> Unit,
+    onClear: () -> Unit
+) {
+    val elements = listOf(
+        Element.PHYSICAL, Element.MAGIC,
+        Element.FIRE, Element.COLD, Element.LIGHTNING, Element.POISON
+    )
+
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(horizontal = 16.dp, vertical = 8.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            modifier = Modifier.fillMaxWidth()
+        ) {
+            Text(
+                text = "Exclude Immunities",
+                style = MaterialTheme.typography.labelMedium,
+                color = MaterialTheme.colorScheme.onSurfaceVariant,
+                modifier = Modifier.weight(1f)
+            )
+            if (excludedImmunities.isNotEmpty()) {
+                Text(
+                    text = "Clear",
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.primary,
+                    modifier = Modifier
+                        .clickable { onClear() }
+                        .padding(4.dp)
+                )
+            }
+        }
+        Spacer(modifier = Modifier.height(6.dp))
+        FlowRow(
+            horizontalArrangement = Arrangement.spacedBy(8.dp),
+            verticalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            elements.forEach { element ->
+                val isExcluded = element in excludedImmunities
+                val color = element.color()
+                ImmunityFilterChip(
+                    label = element.displayName(),
+                    color = color,
+                    isExcluded = isExcluded,
+                    onClick = { onToggle(element) }
+                )
+            }
+        }
+    }
+}
+
+@Composable
+private fun ImmunityFilterChip(
+    label: String,
+    color: Color,
+    isExcluded: Boolean,
+    onClick: () -> Unit
+) {
+    val bgColor = if (isExcluded) color.copy(alpha = 0.3f) else Color.Transparent
+    val borderColor = if (isExcluded) color else color.copy(alpha = 0.4f)
+    val textColor = if (isExcluded) color else color.copy(alpha = 0.6f)
+
+    Box(
+        modifier = Modifier
+            .clip(RoundedCornerShape(12.dp))
+            .background(bgColor)
+            .border(1.dp, borderColor, RoundedCornerShape(12.dp))
+            .clickable { onClick() }
+            .padding(horizontal = 8.dp, vertical = 4.dp)
+    ) {
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(4.dp)
+        ) {
+            Box(
+                modifier = Modifier
+                    .size(8.dp)
+                    .clip(CircleShape)
+                    .background(color)
+            )
+            Text(
+                text = if (isExcluded) "No $label" else label,
+                fontSize = 10.sp,
+                fontWeight = if (isExcluded) FontWeight.Bold else FontWeight.Normal,
+                color = textColor
+            )
+        }
     }
 }
 
@@ -137,7 +244,6 @@ private fun ActHeader(
         else -> "Act $act"
     }
 
-    // Determine selection state
     val allSelected = selectedCount == zones.size
     val noneSelected = selectedCount == 0
     val someSelected = !allSelected && !noneSelected

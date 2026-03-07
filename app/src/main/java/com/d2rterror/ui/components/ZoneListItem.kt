@@ -34,15 +34,37 @@ fun ZoneListItem(
 
         Spacer(modifier = Modifier.width(8.dp))
 
-        Text(
-            text = zone.name,
-            style = MaterialTheme.typography.bodyLarge,
-            color = if (isSelected) {
-                MaterialTheme.colorScheme.onSurface
-            } else {
-                MaterialTheme.colorScheme.onSurfaceVariant
-            },
-            modifier = Modifier.weight(1f)
-        )
+        Column(modifier = Modifier.weight(1f)) {
+            // Name row with tier + key
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
+            ) {
+                Text(
+                    text = zone.name,
+                    style = MaterialTheme.typography.bodyLarge,
+                    color = if (isSelected) {
+                        MaterialTheme.colorScheme.onSurface
+                    } else {
+                        MaterialTheme.colorScheme.onSurfaceVariant
+                    },
+                    modifier = Modifier.weight(1f, fill = false)
+                )
+                TierBadge(tier = zone.tier)
+                if (zone.hasKeyDrop) {
+                    KeyIcon()
+                }
+            }
+
+            // Immunities row
+            if (zone.immunities.isNotEmpty()) {
+                Spacer(modifier = Modifier.height(4.dp))
+                ImmunityRow(
+                    immunities = zone.immunities,
+                    dotSize = 12.dp,
+                    spacing = 2.dp
+                )
+            }
+        }
     }
 }

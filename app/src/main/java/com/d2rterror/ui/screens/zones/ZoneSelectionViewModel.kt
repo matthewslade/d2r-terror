@@ -3,6 +3,7 @@ package com.d2rterror.ui.screens.zones
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.d2rterror.data.local.PreferencesManager
+import com.d2rterror.data.model.Element
 import com.d2rterror.data.model.TerrorZone
 import com.d2rterror.data.repository.TerrorZoneRepository
 import kotlinx.coroutines.flow.*
@@ -11,7 +12,9 @@ import kotlinx.coroutines.launch
 data class ZoneSelectionUiState(
     val zonesByAct: Map<Int, List<TerrorZone>> = emptyMap(),
     val selectedZoneIds: Set<Int> = emptySet(),
-    val expandedActs: Set<Int> = setOf(1, 2, 3, 4, 5) // All expanded by default
+    val expandedActs: Set<Int> = setOf(1, 2, 3, 4, 5),
+    val excludedImmunities: Set<Element> = emptySet(),
+    val filteredZonesByAct: Map<Int, List<TerrorZone>> = emptyMap()
 )
 
 class ZoneSelectionViewModel(
@@ -20,21 +23,51 @@ class ZoneSelectionViewModel(
 ) : ViewModel() {
 
     private val _expandedActs = MutableStateFlow(setOf(1, 2, 3, 4, 5))
+    private val _excludedImmunities = MutableStateFlow<Set<Element>>(emptySet())
 
     val uiState: StateFlow<ZoneSelectionUiState> = combine(
         preferencesManager.selectedZones,
-        _expandedActs
-    ) { selectedZones, expandedActs ->
+        _expandedActs,
+        _excludedImmunities
+    ) { selectedZones, expandedActs, excluded ->
+        val allZonesByAct = repository.getZonesByAct()
+        val filtered = if (excluded.isEmpty()) {
+            allZonesByAct
+        } else {
+            allZonesByAct.mapValues { (_, zones) ->
+                zones.filter { zone ->
+                    // Keep zone if it does NOT have any of the excluded immunities
+                    zone.immunities.none { it in excluded }
+                }
+            }.filterValues { it.isNotEmpty() }
+        }
         ZoneSelectionUiState(
-            zonesByAct = repository.getZonesByAct(),
+            zonesByAct = allZonesByAct,
             selectedZoneIds = selectedZones,
-            expandedActs = expandedActs
+            expandedActs = expandedActs,
+            excludedImmunities = excluded,
+            filteredZonesByAct = filtered
         )
     }.stateIn(
         scope = viewModelScope,
         started = SharingStarted.WhileSubscribed(5000),
-        initialValue = ZoneSelectionUiState(zonesByAct = repository.getZonesByAct())
+        initialValue = ZoneSelectionUiState(
+            zonesByAct = repository.getZonesByAct(),
+            filteredZonesByAct = repository.getZonesByAct()
+        )
     )
+
+    fun toggleImmunityFilter(element: Element) {
+        _excludedImmunities.value = if (element in _excludedImmunities.value) {
+            _excludedImmunities.value - element
+        } else {
+            _excludedImmunities.value + element
+        }
+    }
+
+    fun clearFilters() {
+        _excludedImmunities.value = emptySet()
+    }
 
     fun toggleZone(zoneId: Int, isSelected: Boolean) {
         viewModelScope.launch {

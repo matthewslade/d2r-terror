@@ -88,11 +88,8 @@ fun ZoneCard(
 
 @Composable
 private fun ZoneRow(zone: ScrapedZone) {
-    // Determine Act from matched zone IDs
-    val act = zone.matchedIds.firstOrNull()?.let { id ->
-        ZoneData.getZoneById(id)?.act
-    }
-    val actDisplay = when (act) {
+    val terrorZone = zone.matchedIds.firstOrNull()?.let { ZoneData.getZoneById(it) }
+    val actDisplay = when (terrorZone?.act) {
         1 -> "Act I"
         2 -> "Act II"
         3 -> "Act III"
@@ -101,30 +98,54 @@ private fun ZoneRow(zone: ScrapedZone) {
         else -> ""
     }
 
-    Row(
-        modifier = Modifier.fillMaxWidth(),
-        horizontalArrangement = Arrangement.SpaceBetween,
-        verticalAlignment = Alignment.CenterVertically
-    ) {
-        Text(
-            text = zone.displayName,
-            style = MaterialTheme.typography.bodyLarge,
-            color = MaterialTheme.colorScheme.onSurface,
-            modifier = Modifier.weight(1f)
-        )
+    Column(modifier = Modifier.fillMaxWidth()) {
+        // Zone name row with act badge
+        Row(
+            modifier = Modifier.fillMaxWidth(),
+            horizontalArrangement = Arrangement.SpaceBetween,
+            verticalAlignment = Alignment.CenterVertically
+        ) {
+            Text(
+                text = zone.displayName,
+                style = MaterialTheme.typography.bodyLarge,
+                color = MaterialTheme.colorScheme.onSurface,
+                modifier = Modifier.weight(1f)
+            )
 
-        if (actDisplay.isNotEmpty()) {
-            Box(
-                modifier = Modifier
-                    .clip(RoundedCornerShape(4.dp))
-                    .background(MaterialTheme.colorScheme.surfaceVariant)
-                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            if (actDisplay.isNotEmpty()) {
+                Box(
+                    modifier = Modifier
+                        .clip(RoundedCornerShape(4.dp))
+                        .background(MaterialTheme.colorScheme.surfaceVariant)
+                        .padding(horizontal = 8.dp, vertical = 2.dp)
+                ) {
+                    Text(
+                        text = actDisplay,
+                        style = MaterialTheme.typography.labelSmall,
+                        color = MaterialTheme.colorScheme.onSurfaceVariant
+                    )
+                }
+            }
+        }
+
+        // Info row: tier + key + immunities
+        if (terrorZone != null) {
+            Spacer(modifier = Modifier.height(4.dp))
+            Row(
+                verticalAlignment = Alignment.CenterVertically,
+                horizontalArrangement = Arrangement.spacedBy(6.dp)
             ) {
-                Text(
-                    text = actDisplay,
-                    style = MaterialTheme.typography.labelSmall,
-                    color = MaterialTheme.colorScheme.onSurfaceVariant
-                )
+                TierBadge(tier = terrorZone.tier)
+                if (terrorZone.hasKeyDrop) {
+                    KeyIcon()
+                }
+                if (terrorZone.immunities.isNotEmpty()) {
+                    ImmunityRow(
+                        immunities = terrorZone.immunities,
+                        dotSize = 16.dp,
+                        spacing = 3.dp
+                    )
+                }
             }
         }
     }

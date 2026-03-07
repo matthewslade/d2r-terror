@@ -2,11 +2,22 @@ package com.d2rterror.data.model
 
 import com.d2rterror.data.api.ScrapedZone
 
+enum class Element {
+    FIRE, COLD, LIGHTNING, POISON, PHYSICAL, MAGIC
+}
+
+enum class Tier {
+    S, A, B, C, D, F
+}
+
 data class TerrorZone(
     val id: Int,
     val name: String,
     val act: Int,
-    val keywords: List<String> = emptyList()
+    val keywords: List<String> = emptyList(),
+    val immunities: Set<Element> = emptySet(),
+    val tier: Tier = Tier.C,
+    val hasKeyDrop: Boolean = false
 ) {
     val actDisplay: String
         get() = when (act) {

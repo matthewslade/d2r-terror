@@ -1,6 +1,5 @@
 package com.d2rterror.ui.screens.home
 
-import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
@@ -27,29 +26,43 @@ fun HomeScreen(
 ) {
     val uiState by viewModel.uiState.collectAsState()
     val countdown = rememberCountdownToNextZone()
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topBarHeight = 64.dp // Standard TopAppBar height
 
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Content (draws behind TopAppBar)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "D2R Terror Zones",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                    titleContentColor = D2RGold
+                )
+            )
+        }
+    ) { innerPadding ->
         when {
             uiState.isLoading -> {
-                CircularProgressIndicator(
-                    modifier = Modifier.align(Alignment.Center),
-                    color = D2RGold
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    CircularProgressIndicator(
+                        modifier = Modifier.align(Alignment.Center),
+                        color = D2RGold
+                    )
+                }
             }
 
             uiState.error != null -> {
-                ErrorContent(
-                    message = uiState.error!!,
-                    onRetry = { viewModel.retry() },
-                    modifier = Modifier.align(Alignment.Center)
-                )
+                Box(modifier = Modifier.fillMaxSize()) {
+                    ErrorContent(
+                        message = uiState.error!!,
+                        onRetry = { viewModel.retry() },
+                        modifier = Modifier.align(Alignment.Center)
+                    )
+                }
             }
 
             else -> {
@@ -57,11 +70,11 @@ fun HomeScreen(
                     modifier = Modifier
                         .fillMaxSize()
                         .verticalScroll(rememberScrollState())
+                        .padding(innerPadding)
                         .padding(
-                            top = statusBarPadding + topBarHeight + 8.dp,
                             start = 16.dp,
                             end = 16.dp,
-                            bottom = bottomPadding + 16.dp
+                            bottom = bottomPadding
                         ),
                     verticalArrangement = Arrangement.spacedBy(16.dp)
                 ) {
@@ -83,21 +96,6 @@ fun HomeScreen(
                 }
             }
         }
-
-        // TopAppBar (overlaid on top, semi-transparent)
-        TopAppBar(
-            title = {
-                Text(
-                    text = "D2R Terror Zones",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
-                titleContentColor = D2RGold
-            ),
-            modifier = Modifier.statusBarsPadding()
-        )
     }
 }
 

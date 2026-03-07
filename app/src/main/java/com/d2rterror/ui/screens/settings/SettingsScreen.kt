@@ -106,21 +106,30 @@ fun SettingsScreen(
         isIgnoringBatteryOptimizations = BatteryOptimizationHelper.isIgnoringBatteryOptimizations(context)
     }
 
-    val statusBarPadding = WindowInsets.statusBars.asPaddingValues().calculateTopPadding()
-    val topBarHeight = 64.dp
-
-    Box(
-        modifier = Modifier
-            .fillMaxSize()
-            .background(MaterialTheme.colorScheme.background)
-    ) {
-        // Content (draws behind TopAppBar)
+    Scaffold(
+        modifier = Modifier.fillMaxSize(),
+        containerColor = MaterialTheme.colorScheme.background,
+        topBar = {
+            TopAppBar(
+                title = {
+                    Text(
+                        text = "Settings",
+                        fontWeight = FontWeight.Bold
+                    )
+                },
+                colors = TopAppBarDefaults.topAppBarColors(
+                    containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
+                    titleContentColor = D2RGold
+                )
+            )
+        }
+    ) { innerPadding ->
         Column(
             modifier = Modifier
                 .fillMaxSize()
                 .verticalScroll(rememberScrollState())
+                .padding(innerPadding)
                 .padding(
-                    top = statusBarPadding + topBarHeight + 8.dp,
                     start = 16.dp,
                     end = 16.dp,
                     bottom = bottomPadding + 16.dp
@@ -567,21 +576,6 @@ fun SettingsScreen(
                 }
             }
         }
-
-        // TopAppBar (overlaid on top, semi-transparent)
-        TopAppBar(
-            title = {
-                Text(
-                    text = "Settings",
-                    fontWeight = FontWeight.Bold
-                )
-            },
-            colors = TopAppBarDefaults.topAppBarColors(
-                containerColor = MaterialTheme.colorScheme.background.copy(alpha = 0.9f),
-                titleContentColor = D2RGold
-            ),
-            modifier = Modifier.statusBarsPadding()
-        )
     }
 }
 
