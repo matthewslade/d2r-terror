@@ -6,6 +6,7 @@ import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
 import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Shield
 import androidx.compose.material.icons.filled.VpnKey
 import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
@@ -104,6 +105,19 @@ fun KeyIcon(
         imageVector = Icons.Default.VpnKey,
         contentDescription = "Key drop",
         tint = D2RGold,
+        modifier = modifier.size(size)
+    )
+}
+
+@Composable
+fun BossIcon(
+    size: Dp = 18.dp,
+    modifier: Modifier = Modifier
+) {
+    Icon(
+        imageVector = Icons.Default.Shield,
+        contentDescription = "Act boss",
+        tint = D2RRed,
         modifier = modifier.size(size)
     )
 }

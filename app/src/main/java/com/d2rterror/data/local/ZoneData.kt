@@ -52,7 +52,8 @@ object ZoneData {
         TerrorZone(9, "Cathedral and Catacombs", 1,
             listOf("cathedral", "catacombs", "inner cloister"),
             immunities = setOf(FIRE, COLD, LIGHTNING),
-            tier = Tier.S),
+            tier = Tier.S,
+            hasBoss = true),
         TerrorZone(10, "The Pit", 1,
             listOf("pit", "tamoe highland"),
             immunities = setOf(FIRE, COLD, LIGHTNING, POISON),
@@ -99,7 +100,8 @@ object ZoneData {
         TerrorZone(20, "Tal Rasha's Tombs", 2,
             listOf("tal rasha", "tomb"),
             immunities = setOf(FIRE, COLD, LIGHTNING, POISON, PHYSICAL),
-            tier = Tier.S),
+            tier = Tier.S,
+            hasBoss = true),
 
         // Act III
         TerrorZone(21, "Spider Forest and Spider Cavern", 3,
@@ -125,7 +127,8 @@ object ZoneData {
         TerrorZone(26, "Durance of Hate", 3,
             listOf("durance of hate"),
             immunities = setOf(FIRE, COLD, LIGHTNING),
-            tier = Tier.D),
+            tier = Tier.D,
+            hasBoss = true),
 
         // Act IV
         TerrorZone(27, "Outer Steppes and Plains of Despair", 4,
@@ -139,7 +142,8 @@ object ZoneData {
         TerrorZone(29, "Chaos Sanctuary", 4,
             listOf("chaos sanctuary"),
             immunities = setOf(FIRE, COLD, LIGHTNING, POISON, PHYSICAL),
-            tier = Tier.S),
+            tier = Tier.S,
+            hasBoss = true),
 
         // Act V
         TerrorZone(30, "Bloody Foothills, Frigid Highlands, and Abaddon", 5,
@@ -170,7 +174,8 @@ object ZoneData {
         TerrorZone(36, "Worldstone Keep, Throne of Destruction, and Worldstone Chamber", 5,
             listOf("worldstone keep", "throne of destruction", "worldstone chamber"),
             immunities = setOf(FIRE, COLD, LIGHTNING, POISON, PHYSICAL),
-            tier = Tier.S)
+            tier = Tier.S,
+            hasBoss = true)
     )
 
     fun findZoneByScrapedName(scrapedName: String): Int? {

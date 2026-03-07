@@ -12,6 +12,7 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import com.d2rterror.data.api.ScrapedZone
 import com.d2rterror.data.local.ZoneData
+import com.d2rterror.data.model.TerrorZone
 import com.d2rterror.ui.theme.D2RGold
 import com.d2rterror.ui.theme.D2RRed
 
@@ -75,9 +76,13 @@ fun ZoneCard(
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             } else {
-                zones.forEach { zone ->
-                    ZoneRow(zone = zone)
-                    if (zone != zones.last()) {
+                // Resolve all matched zone groups from all scraped zones
+                val terrorZones = zones.flatMap { zone ->
+                    zone.matchedIds.mapNotNull { ZoneData.getZoneById(it) }
+                }
+                terrorZones.forEachIndexed { index, terrorZone ->
+                    ZoneRow(terrorZone = terrorZone)
+                    if (index < terrorZones.lastIndex) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
@@ -87,17 +92,7 @@ fun ZoneCard(
 }
 
 @Composable
-private fun ZoneRow(zone: ScrapedZone) {
-    val terrorZone = zone.matchedIds.firstOrNull()?.let { ZoneData.getZoneById(it) }
-    val actDisplay = when (terrorZone?.act) {
-        1 -> "Act I"
-        2 -> "Act II"
-        3 -> "Act III"
-        4 -> "Act IV"
-        5 -> "Act V"
-        else -> ""
-    }
-
+private fun ZoneRow(terrorZone: TerrorZone) {
     Column(modifier = Modifier.fillMaxWidth()) {
         // Zone name row with act badge
         Row(
@@ -106,46 +101,45 @@ private fun ZoneRow(zone: ScrapedZone) {
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = zone.displayName,
+                text = terrorZone.name,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
             )
 
-            if (actDisplay.isNotEmpty()) {
-                Box(
-                    modifier = Modifier
-                        .clip(RoundedCornerShape(4.dp))
-                        .background(MaterialTheme.colorScheme.surfaceVariant)
-                        .padding(horizontal = 8.dp, vertical = 2.dp)
-                ) {
-                    Text(
-                        text = actDisplay,
-                        style = MaterialTheme.typography.labelSmall,
-                        color = MaterialTheme.colorScheme.onSurfaceVariant
-                    )
-                }
+            Box(
+                modifier = Modifier
+                    .clip(RoundedCornerShape(4.dp))
+                    .background(MaterialTheme.colorScheme.surfaceVariant)
+                    .padding(horizontal = 8.dp, vertical = 2.dp)
+            ) {
+                Text(
+                    text = terrorZone.actDisplay,
+                    style = MaterialTheme.typography.labelSmall,
+                    color = MaterialTheme.colorScheme.onSurfaceVariant
+                )
             }
         }
 
         // Info row: tier + key + immunities
-        if (terrorZone != null) {
-            Spacer(modifier = Modifier.height(4.dp))
-            Row(
-                verticalAlignment = Alignment.CenterVertically,
-                horizontalArrangement = Arrangement.spacedBy(6.dp)
-            ) {
-                TierBadge(tier = terrorZone.tier)
-                if (terrorZone.hasKeyDrop) {
-                    KeyIcon()
-                }
-                if (terrorZone.immunities.isNotEmpty()) {
-                    ImmunityRow(
-                        immunities = terrorZone.immunities,
-                        dotSize = 16.dp,
-                        spacing = 3.dp
-                    )
-                }
+        Spacer(modifier = Modifier.height(4.dp))
+        Row(
+            verticalAlignment = Alignment.CenterVertically,
+            horizontalArrangement = Arrangement.spacedBy(6.dp)
+        ) {
+            TierBadge(tier = terrorZone.tier)
+            if (terrorZone.hasBoss) {
+                BossIcon()
+            }
+            if (terrorZone.hasKeyDrop) {
+                KeyIcon()
+            }
+            if (terrorZone.immunities.isNotEmpty()) {
+                ImmunityRow(
+                    immunities = terrorZone.immunities,
+                    dotSize = 16.dp,
+                    spacing = 3.dp
+                )
             }
         }
     }

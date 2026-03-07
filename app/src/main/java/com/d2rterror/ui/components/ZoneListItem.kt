@@ -51,6 +51,9 @@ fun ZoneListItem(
                     modifier = Modifier.weight(1f, fill = false)
                 )
                 TierBadge(tier = zone.tier)
+                if (zone.hasBoss) {
+                    BossIcon()
+                }
                 if (zone.hasKeyDrop) {
                     KeyIcon()
                 }

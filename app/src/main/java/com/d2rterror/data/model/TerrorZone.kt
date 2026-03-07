@@ -17,7 +17,8 @@ data class TerrorZone(
     val keywords: List<String> = emptyList(),
     val immunities: Set<Element> = emptySet(),
     val tier: Tier = Tier.C,
-    val hasKeyDrop: Boolean = false
+    val hasKeyDrop: Boolean = false,
+    val hasBoss: Boolean = false
 ) {
     val actDisplay: String
         get() = when (act) {
