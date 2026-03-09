@@ -13,6 +13,7 @@ import androidx.compose.ui.unit.dp
 import com.d2rterror.data.api.ScrapedZone
 import com.d2rterror.data.local.ZoneData
 import com.d2rterror.data.model.TerrorZone
+import com.d2rterror.data.model.TerrorZoneGroup
 import com.d2rterror.ui.theme.D2RGold
 import com.d2rterror.ui.theme.D2RRed
 
@@ -77,12 +78,12 @@ fun ZoneCard(
                 )
             } else {
                 // Resolve all matched zone groups from all scraped zones
-                val terrorZones = zones.flatMap { zone ->
+                val terrorZoneGroups = zones.flatMap { zone ->
                     zone.matchedIds.mapNotNull { ZoneData.getZoneById(it) }
                 }
-                terrorZones.forEachIndexed { index, terrorZone ->
-                    ZoneRow(terrorZone = terrorZone)
-                    if (index < terrorZones.lastIndex) {
+                terrorZoneGroups.forEachIndexed { index, group ->
+                    ZoneGroupRow(group = group)
+                    if (index < terrorZoneGroups.lastIndex) {
                         Spacer(modifier = Modifier.height(8.dp))
                     }
                 }
@@ -92,16 +93,16 @@ fun ZoneCard(
 }
 
 @Composable
-private fun ZoneRow(terrorZone: TerrorZone) {
+private fun ZoneGroupRow(group: TerrorZoneGroup) {
     Column(modifier = Modifier.fillMaxWidth()) {
-        // Zone name row with act badge
+        // Group header: name + act badge + tier/boss/key
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.SpaceBetween,
             verticalAlignment = Alignment.CenterVertically
         ) {
             Text(
-                text = terrorZone.name,
+                text = group.name,
                 style = MaterialTheme.typography.bodyLarge,
                 color = MaterialTheme.colorScheme.onSurface,
                 modifier = Modifier.weight(1f)
@@ -114,33 +115,57 @@ private fun ZoneRow(terrorZone: TerrorZone) {
                     .padding(horizontal = 8.dp, vertical = 2.dp)
             ) {
                 Text(
-                    text = terrorZone.actDisplay,
+                    text = group.actDisplay,
                     style = MaterialTheme.typography.labelSmall,
                     color = MaterialTheme.colorScheme.onSurfaceVariant
                 )
             }
         }
 
-        // Info row: tier + key + immunities
         Spacer(modifier = Modifier.height(4.dp))
+
+        // Group info: tier
         Row(
             verticalAlignment = Alignment.CenterVertically,
             horizontalArrangement = Arrangement.spacedBy(6.dp)
         ) {
-            TierBadge(tier = terrorZone.tier)
-            if (terrorZone.hasBoss) {
-                BossIcon()
-            }
-            if (terrorZone.hasKeyDrop) {
-                KeyIcon()
-            }
-            if (terrorZone.immunities.isNotEmpty()) {
-                ImmunityRow(
-                    immunities = terrorZone.immunities,
-                    dotSize = 16.dp,
-                    spacing = 3.dp
-                )
-            }
+            TierBadge(tier = group.tier)
+        }
+
+        // Sub-zones with individual immunities
+        Spacer(modifier = Modifier.height(6.dp))
+        group.zones.forEach { zone ->
+            SubZoneRow(zone = zone)
+        }
+    }
+}
+
+@Composable
+private fun SubZoneRow(zone: TerrorZone) {
+    Row(
+        modifier = Modifier
+            .fillMaxWidth()
+            .padding(start = 8.dp, top = 2.dp, bottom = 2.dp),
+        verticalAlignment = Alignment.CenterVertically
+    ) {
+        Text(
+            text = zone.name,
+            style = MaterialTheme.typography.bodySmall,
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            modifier = Modifier.weight(1f)
+        )
+        if (zone.hasBoss) {
+            BossIcon()
+        }
+        if (zone.hasKeyDrop) {
+            KeyIcon()
+        }
+        if (zone.immunities.isNotEmpty()) {
+            ImmunityRow(
+                immunities = zone.immunities,
+                dotSize = 14.dp,
+                spacing = 2.dp
+            )
         }
     }
 }

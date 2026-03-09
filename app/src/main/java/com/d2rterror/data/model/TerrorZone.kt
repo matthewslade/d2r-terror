@@ -11,15 +11,34 @@ enum class Tier {
 }
 
 data class TerrorZone(
-    val id: Int,
     val name: String,
-    val act: Int,
-    val keywords: List<String> = emptyList(),
     val immunities: Set<Element> = emptySet(),
     val tier: Tier = Tier.C,
     val hasKeyDrop: Boolean = false,
     val hasBoss: Boolean = false
+)
+
+data class TerrorZoneGroup(
+    val id: Int,
+    val name: String,
+    val act: Int,
+    val keywords: List<String> = emptyList(),
+    val zones: List<TerrorZone> = emptyList()
 ) {
+    /** Union of all sub-zone immunities */
+    val immunities: Set<Element>
+        get() = zones.flatMap { it.immunities }.toSet()
+
+    /** Best tier among sub-zones */
+    val tier: Tier
+        get() = zones.minOfOrNull { it.tier } ?: Tier.C
+
+    val hasKeyDrop: Boolean
+        get() = zones.any { it.hasKeyDrop }
+
+    val hasBoss: Boolean
+        get() = zones.any { it.hasBoss }
+
     val actDisplay: String
         get() = when (act) {
             1 -> "Act I"

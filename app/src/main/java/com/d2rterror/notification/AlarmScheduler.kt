@@ -42,7 +42,7 @@ class AlarmScheduler(private val context: Context) {
 
         val zoneNames = matchingZones.joinToString(", ") { it.displayName }
         val zoneActs = matchingZones.flatMap { it.matchedIds }
-            .mapNotNull { id -> getActForZoneId(id) }
+            .mapNotNull { id -> com.d2rterror.data.local.ZoneData.getZoneById(id)?.act }
             .distinct()
             .sorted()
             .joinToString(",")
@@ -169,20 +169,6 @@ class AlarmScheduler(private val context: Context) {
                 calendar.set(Calendar.MILLISECOND, 0)
                 calendar.timeInMillis
             }
-        }
-    }
-
-    /**
-     * Get act number for a zone ID (simplified mapping).
-     */
-    private fun getActForZoneId(zoneId: Int): Int? {
-        return when (zoneId) {
-            in 1..8 -> 1
-            in 9..16 -> 2
-            in 17..25 -> 3
-            in 26..28 -> 4
-            in 29..36 -> 5
-            else -> null
         }
     }
 

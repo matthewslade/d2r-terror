@@ -4,17 +4,17 @@ import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
 import com.d2rterror.data.local.PreferencesManager
 import com.d2rterror.data.model.Element
-import com.d2rterror.data.model.TerrorZone
+import com.d2rterror.data.model.TerrorZoneGroup
 import com.d2rterror.data.repository.TerrorZoneRepository
 import kotlinx.coroutines.flow.*
 import kotlinx.coroutines.launch
 
 data class ZoneSelectionUiState(
-    val zonesByAct: Map<Int, List<TerrorZone>> = emptyMap(),
+    val zonesByAct: Map<Int, List<TerrorZoneGroup>> = emptyMap(),
     val selectedZoneIds: Set<Int> = emptySet(),
     val expandedActs: Set<Int> = setOf(1, 2, 3, 4, 5),
     val excludedImmunities: Set<Element> = emptySet(),
-    val filteredZonesByAct: Map<Int, List<TerrorZone>> = emptyMap()
+    val filteredZonesByAct: Map<Int, List<TerrorZoneGroup>> = emptyMap()
 )
 
 class ZoneSelectionViewModel(

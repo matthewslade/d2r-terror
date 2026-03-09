@@ -2,7 +2,7 @@ package com.d2rterror.data.repository
 
 import com.d2rterror.data.api.TerrorZoneScraper
 import com.d2rterror.data.local.ZoneData
-import com.d2rterror.data.model.TerrorZone
+import com.d2rterror.data.model.TerrorZoneGroup
 import com.d2rterror.data.model.TerrorZoneState
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.flow.MutableStateFlow
@@ -70,17 +70,17 @@ class TerrorZoneRepository(
     }
 
     /**
-     * Get all available terror zones (static data)
+     * Get all available terror zone groups (static data)
      */
-    fun getAllZones(): List<TerrorZone> = ZoneData.getAllZones()
+    fun getAllZones(): List<TerrorZoneGroup> = ZoneData.getAllZones()
 
     /**
-     * Get zones grouped by Act
+     * Get zone groups grouped by Act
      */
-    fun getZonesByAct(): Map<Int, List<TerrorZone>> = ZoneData.getZonesByAct()
+    fun getZonesByAct(): Map<Int, List<TerrorZoneGroup>> = ZoneData.getZonesByAct()
 
     /**
-     * Get a specific zone by ID
+     * Get a specific zone group by ID
      */
-    fun getZoneById(id: Int): TerrorZone? = ZoneData.getZoneById(id)
+    fun getZoneById(id: Int): TerrorZoneGroup? = ZoneData.getZoneById(id)
 }

@@ -7,11 +7,11 @@ import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.d2rterror.data.model.TerrorZone
+import com.d2rterror.data.model.TerrorZoneGroup
 
 @Composable
 fun ZoneListItem(
-    zone: TerrorZone,
+    zone: TerrorZoneGroup,
     isSelected: Boolean,
     onToggle: (Boolean) -> Unit,
     modifier: Modifier = Modifier
@@ -21,7 +21,7 @@ fun ZoneListItem(
             .fillMaxWidth()
             .clickable { onToggle(!isSelected) }
             .padding(horizontal = 16.dp, vertical = 8.dp),
-        verticalAlignment = Alignment.CenterVertically
+        verticalAlignment = Alignment.Top
     ) {
         Checkbox(
             checked = isSelected,
@@ -59,14 +59,39 @@ fun ZoneListItem(
                 }
             }
 
-            // Immunities row
-            if (zone.immunities.isNotEmpty()) {
-                Spacer(modifier = Modifier.height(4.dp))
-                ImmunityRow(
-                    immunities = zone.immunities,
-                    dotSize = 12.dp,
-                    spacing = 2.dp
-                )
+            // Sub-zones with individual immunities
+            zone.zones.forEach { subZone ->
+                Spacer(modifier = Modifier.height(2.dp))
+                Row(
+                    modifier = Modifier
+                        .fillMaxWidth()
+                        .padding(start = 4.dp),
+                    verticalAlignment = Alignment.CenterVertically
+                ) {
+                    Text(
+                        text = subZone.name,
+                        style = MaterialTheme.typography.bodySmall,
+                        color = if (isSelected) {
+                            MaterialTheme.colorScheme.onSurfaceVariant
+                        } else {
+                            MaterialTheme.colorScheme.onSurfaceVariant.copy(alpha = 0.6f)
+                        },
+                        modifier = Modifier.weight(1f)
+                    )
+                    if (subZone.hasBoss) {
+                        BossIcon()
+                    }
+                    if (subZone.hasKeyDrop) {
+                        KeyIcon()
+                    }
+                    if (subZone.immunities.isNotEmpty()) {
+                        ImmunityRow(
+                            immunities = subZone.immunities,
+                            dotSize = 10.dp,
+                            spacing = 2.dp
+                        )
+                    }
+                }
             }
         }
     }

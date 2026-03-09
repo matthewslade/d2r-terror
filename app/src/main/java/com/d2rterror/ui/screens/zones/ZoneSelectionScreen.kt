@@ -27,7 +27,7 @@ import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import com.d2rterror.data.model.Element
-import com.d2rterror.data.model.TerrorZone
+import com.d2rterror.data.model.TerrorZoneGroup
 import com.d2rterror.ui.components.ZoneListItem
 import com.d2rterror.ui.components.color
 import com.d2rterror.ui.components.displayName
@@ -229,7 +229,7 @@ private fun ImmunityFilterChip(
 @Composable
 private fun ActHeader(
     act: Int,
-    zones: List<TerrorZone>,
+    zones: List<TerrorZoneGroup>,
     selectedCount: Int,
     isExpanded: Boolean,
     onToggleExpand: () -> Unit,
