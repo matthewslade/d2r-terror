@@ -47,10 +47,6 @@ class TerrorZoneScraper(private val client: OkHttpClient) {
      * Parse the HTML to extract current and next zone data
      */
     private fun parseHtml(html: String): TerrorZoneResponse {
-        Log.d(TAG, "HTML length: ${html.length}, first 300 chars: ${html.take(300)}")
-        Log.d(TAG, "Contains __1: ${html.contains("__1")}, Contains __2: ${html.contains("__2")}")
-        Log.d(TAG, "Contains value=: ${html.contains("value=\"")}")
-
         // Extract value attributes from __1 and __2 spans
         val currentValue = extractValueAttribute(html, "__1")
         val nextValue = extractValueAttribute(html, "__2")
