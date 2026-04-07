@@ -18,8 +18,8 @@ class TerrorZoneScraper(private val client: OkHttpClient) {
     companion object {
         private const val TAG = "TerrorZoneScraper"
         private const val TRACKER_URL = "https://d2emu.com/tz"
-        private const val KEY_1 = "ka02jnb1"
-        private const val KEY_2 = "kb32jnb1"
+        private const val KEY_1 = "kab2jnb1"
+        private const val KEY_2 = "kbd2jnb1"
     }
 
     /**
@@ -47,6 +47,10 @@ class TerrorZoneScraper(private val client: OkHttpClient) {
      * Parse the HTML to extract current and next zone data
      */
     private fun parseHtml(html: String): TerrorZoneResponse {
+        Log.d(TAG, "HTML length: ${html.length}, first 300 chars: ${html.take(300)}")
+        Log.d(TAG, "Contains __1: ${html.contains("__1")}, Contains __2: ${html.contains("__2")}")
+        Log.d(TAG, "Contains value=: ${html.contains("value=\"")}")
+
         // Extract value attributes from __1 and __2 spans
         val currentValue = extractValueAttribute(html, "__1")
         val nextValue = extractValueAttribute(html, "__2")
